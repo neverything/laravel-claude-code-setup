@@ -1,4 +1,4 @@
-# Laravel Claude Setup 🚀
+# Laravel Claude Code Setup 🚀
 
 **One-command setup for AI-powered Laravel development with Claude Code and MCP servers**
 
@@ -19,10 +19,9 @@ Automatically configures Claude Code with essential MCP servers for Laravel proj
 ## 🚀 One-Line Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-setup/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh | bash
 ```
 
-> **Note:** Replace `laraben` with your actual GitHub username
 
 ## 📋 Prerequisites
 
@@ -70,14 +69,14 @@ source .claude/shortcuts.sh
 ## 🗑️ Uninstalling
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-setup/main/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/uninstall.sh | bash
 ```
 
 ## 🛠️ Manual Installation
 
 ```bash
-git clone https://github.com/laraben/laravel-claude-setup.git
-cd laravel-claude-setup
+git clone https://github.com/laraben/laravel-claude-code-setup.git
+cd laravel-claude-code-setup
 chmod +x install.sh
 ./install.sh
 ```
@@ -115,4 +114,4 @@ Built for Laravel developers who love AI-assisted coding with Claude Code.
 
 ---
 
-**⭐ Star this repo if it helped you!** | **🐛 [Report Issues](https://github.com/laraben/laravel-claude-setup/issues)** | **💬 [Discussions](https://github.com/laraben/laravel-claude-setup/discussions)**
+**⭐ Star this repo if it helped you!** | **🐛 [Report Issues](https://github.com/laraben/laravel-claude-code-setup/issues)** | **💬 [Discussions](https://github.com/laraben/laravel-claude-code-setup/discussions)**
