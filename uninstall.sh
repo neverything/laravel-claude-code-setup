@@ -1,8 +1,9 @@
 #!/bin/bash
 
-# Laravel Claude Setup Uninstaller v1.5
-# Removes MCP servers and configurations created by v1.5 installer
+# Laravel Claude Setup Uninstaller v1.6
+# Removes MCP servers and configurations created by v1.6 installer
 # Supports both single project removal and complete uninstallation
+# Updated to handle global vs project-specific servers
 
 set -e
 
@@ -57,7 +58,7 @@ if is_laravel_project; then
     echo ""
     echo "Choose uninstallation scope:"
     echo "1) Remove MCP servers for current project only ($PROJECT_NAME)"
-    echo "2) Remove ALL Laravel projects and MCP servers (complete uninstall)"
+    echo "2) Remove ALL MCP servers (complete uninstall)"
     echo "3) Cancel"
     echo ""
     read -p "Enter choice (1, 2, or 3): " choice
@@ -78,7 +79,7 @@ else
     echo "❌ Not in a Laravel project directory."
     echo ""
     echo "Choose uninstallation scope:"
-    echo "1) Remove ALL Laravel projects and MCP servers (complete uninstall)"
+    echo "1) Remove ALL MCP servers (complete uninstall)"
     echo "2) Cancel"
     echo ""
     read -p "Enter choice (1 or 2): " choice
@@ -97,19 +98,22 @@ fi
 echo ""
 if [ "$UNINSTALL_SCOPE" = "project" ]; then
     echo "This will remove MCP servers for: $PROJECT_NAME"
-    echo "• filesystem-$PROJECT_ID, database-$PROJECT_ID, github-$PROJECT_ID, etc."
-    echo "• Project-specific configurations and wrapper scripts"
+    echo "• filesystem-$PROJECT_ID"
+    echo "• database-$PROJECT_ID"
+    echo "• debugbar-$PROJECT_ID (if present)"
+    echo "• Project-specific configurations"
     echo "• .claude/ directory (optional)"
     echo ""
+    echo "Global servers (GitHub, Memory, Context7, Web Fetch) will remain available."
     echo "Other Laravel projects will remain untouched."
 elif [ "$UNINSTALL_SCOPE" = "complete" ]; then
     echo "This will remove:"
-    echo "• ALL MCP servers (all projects)"
+    echo "• ALL MCP servers (global and project-specific)"
     echo "• All MCP server installations and configurations"
-    echo "• All GitHub wrapper scripts"
     echo "• Global npm packages"
     echo "• .claude/ directory (optional)"
     echo ""
+    echo "⚠️  WARNING: This will affect ALL your Laravel projects!"
 fi
 
 read -p "Are you sure you want to proceed? (y/N): " confirm
@@ -124,10 +128,10 @@ print_status "Starting uninstallation..."
 # Remove MCP servers
 if command -v claude &> /dev/null; then
     if [ "$UNINSTALL_SCOPE" = "project" ]; then
-        print_status "Removing MCP servers for project: $PROJECT_NAME"
+        print_status "Removing project-specific MCP servers for: $PROJECT_NAME"
         
-        # Find and remove project-specific MCP servers
-        PROJECT_SERVERS=$(claude mcp list 2>/dev/null | grep -E "^(filesystem|memory|github|webfetch|database|context7|debugbar)-$PROJECT_ID" | awk '{print $1}' || true)
+        # Find and remove project-specific MCP servers only
+        PROJECT_SERVERS=$(claude mcp list 2>/dev/null | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | awk '{print $1}' || true)
         
         if [ ! -z "$PROJECT_SERVERS" ]; then
             echo "$PROJECT_SERVERS" | while read -r server; do
@@ -136,21 +140,22 @@ if command -v claude &> /dev/null; then
                     print_status "Removed MCP server: $server"
                 fi
             done
-            print_success "Removed all MCP servers for $PROJECT_NAME"
+            print_success "Removed project-specific MCP servers for $PROJECT_NAME"
         else
-            print_warning "No MCP servers found for project $PROJECT_NAME"
+            print_warning "No project-specific MCP servers found for $PROJECT_NAME"
         fi
         
-        # Remove project-specific wrapper scripts and configs
+        # Remove project-specific database config
         MCP_DIR="$HOME/.config/claude-code/mcp-servers"
-        if [ -f "$MCP_DIR/github-wrapper-$PROJECT_ID.sh" ]; then
-            rm -f "$MCP_DIR/github-wrapper-$PROJECT_ID.sh"
-            print_status "Removed GitHub wrapper script for $PROJECT_NAME"
-        fi
-        
         if [ -f "$MCP_DIR/db-mcp-server/config-$PROJECT_ID.json" ]; then
             rm -f "$MCP_DIR/db-mcp-server/config-$PROJECT_ID.json"
             print_status "Removed database config for $PROJECT_NAME"
+        fi
+        
+        # Count remaining project servers
+        REMAINING_PROJECT_SERVERS=$(claude mcp list 2>/dev/null | grep -E "^(filesystem|database|debugbar)-" | wc -l | tr -d ' ')
+        if [ "$REMAINING_PROJECT_SERVERS" -eq 0 ]; then
+            print_status "No other Laravel projects configured - you may want to run complete uninstall to remove global servers"
         fi
         
     elif [ "$UNINSTALL_SCOPE" = "complete" ]; then
@@ -169,6 +174,15 @@ if command -v claude &> /dev/null; then
             print_success "Removed all MCP servers"
         else
             print_warning "No MCP servers found to remove"
+        fi
+        
+        # Clean up GitHub token from global config if present
+        CONFIG_FILE="$HOME/.claude.json"
+        if [ -f "$CONFIG_FILE" ] && command -v jq &> /dev/null; then
+            print_status "Cleaning GitHub token from global config..."
+            cp "$CONFIG_FILE" "$CONFIG_FILE.backup"
+            jq 'if .mcpServers.github then .mcpServers.github.env = {} else . end' "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+            print_success "Removed GitHub token from configuration"
         fi
     fi
 else
@@ -198,7 +212,7 @@ if [ "$UNINSTALL_SCOPE" = "complete" ]; then
             rm -rf "$MCP_DIR/fetch-mcp"
         fi
         
-        # Remove all GitHub wrapper scripts
+        # Remove all GitHub wrapper scripts (legacy)
         rm -f "$MCP_DIR"/github-wrapper*.sh 2>/dev/null || true
         
         # Remove the entire MCP servers directory
@@ -228,7 +242,6 @@ if [ "$UNINSTALL_SCOPE" = "complete" ]; then
         "@modelcontextprotocol/server-github" 
         "@modelcontextprotocol/server-memory"
         "@sebdesign/debugbar-mcp-server"
-        "@sylphlab/pdf-reader-mcp"
     )
     
     for package in "${NPM_PACKAGES[@]}"; do
@@ -275,38 +288,49 @@ echo ""
 
 if [ "$UNINSTALL_SCOPE" = "project" ]; then
     print_status "What was removed for $PROJECT_NAME:"
-    echo "  ✅ Project-specific MCP servers (filesystem-$PROJECT_ID, database-$PROJECT_ID, etc.)"
-    echo "  ✅ Project-specific configurations and wrapper scripts"
+    echo "  ✅ Project-specific MCP servers (filesystem-$PROJECT_ID, database-$PROJECT_ID)"
     echo "  ✅ Project-specific database configuration"
+    if [ -d ".claude" ]; then
+        echo "  ✅ Project .claude/ directory (if confirmed)"
+    fi
     echo ""
     print_warning "What was preserved:"
+    echo "  🔒 Global MCP servers (GitHub, Memory, Context7, Web Fetch)"
     echo "  🔒 Other Laravel projects and their MCP servers"
     echo "  🔒 Global MCP server installations"
     echo "  🔒 Your Laravel project files"
     echo ""
-    print_status "Other Laravel projects continue to work normally."
+    print_status "Global servers remain available for all projects."
     
     # Show remaining MCP servers
     if command -v claude &> /dev/null; then
-        REMAINING_SERVERS=$(claude mcp list 2>/dev/null | wc -l | tr -d ' ')
-        if [ "$REMAINING_SERVERS" -gt 0 ]; then
-            print_status "Remaining MCP servers: $REMAINING_SERVERS"
-            claude mcp list | sed 's/^/  /'
+        echo ""
+        print_status "Remaining MCP servers:"
+        echo ""
+        echo "  Global servers (available everywhere):"
+        claude mcp list 2>/dev/null | grep -E "^(github|memory|context7|webfetch)[[:space:]]" | sed 's/^/    ✅ /' || true
+        echo ""
+        
+        OTHER_PROJECT_SERVERS=$(claude mcp list 2>/dev/null | grep -E "^(filesystem|database|debugbar)-" | wc -l | tr -d ' ')
+        if [ "$OTHER_PROJECT_SERVERS" -gt 0 ]; then
+            echo "  Other project servers:"
+            claude mcp list 2>/dev/null | grep -E "^(filesystem|database|debugbar)-" | sed 's/^/    ✅ /' || true
         fi
     fi
     
 elif [ "$UNINSTALL_SCOPE" = "complete" ]; then
     print_status "What was removed:"
-    echo "  ✅ All MCP servers (all projects)"
+    echo "  ✅ All global MCP servers (GitHub, Memory, Context7, Web Fetch)"
+    echo "  ✅ All project-specific MCP servers (all projects)"
     echo "  ✅ All MCP server installations and source code"
-    echo "  ✅ All GitHub authentication wrapper scripts"
     echo "  ✅ All project-specific configurations"
     echo "  ✅ Global npm packages installed by the setup"
+    echo "  ✅ GitHub token from global configuration"
     echo ""
     print_warning "What was preserved:"
     echo "  🔒 Claude Code application (still installed)"
     echo "  🔒 All your Laravel project files (completely untouched)"
-    echo "  🔒 Your GitHub Personal Access Token (if created)"
+    echo "  🔒 Your GitHub Personal Access Token (still valid, just removed from config)"
     echo "  🔒 Node.js, npm, Go installations"
 fi
 
@@ -315,7 +339,8 @@ print_status "Next steps:"
 if [ "$UNINSTALL_SCOPE" = "project" ]; then
     echo "  1. $PROJECT_NAME is no longer accessible via Claude Code MCP"
     echo "  2. You can reinstall for this project anytime"
-    echo "  3. Other Laravel projects continue to work normally"
+    echo "  3. Global servers and other projects continue to work normally"
+    echo "  4. To remove global servers too, run complete uninstall"
 else
     echo "  1. Restart Claude Code if it's currently running"
     echo "  2. No MCP servers will be available in Claude Code"

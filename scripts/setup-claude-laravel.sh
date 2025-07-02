@@ -1235,10 +1235,15 @@ main() {
     print_status "🚀 Claude Code is now fully configured with MCP servers!"
     echo ""
     print_status "📋 Installed MCP Servers:"
-    claude mcp list | sed 's/^/    /'
+    echo ""
+    echo "  Global Servers (shared across all projects):"
+    claude mcp list | grep -E "^(github|memory|context7|webfetch)[[:space:]]" | sed 's/^/    ✅ /' || true
+    echo ""
+    echo "  Project-Specific Servers for $PROJECT_NAME:"
+    claude mcp list | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | sed 's/^/    ✅ /' || true
     echo ""
     print_status "Next steps:"
-    echo "1. Claude Code is ready to use immediately"
+    echo "1. If you see the GitHub warning above, manually add your token to ~/.claude.json"
     echo "2. Load helpful aliases: source .claude/shortcuts.sh"
     echo "3. Test MCP servers with: 'Can you list available MCP servers and read my .env file?'"
     echo "4. Try: 'Show me the project structure' or 'What's in my database?'"
@@ -1250,19 +1255,17 @@ main() {
     print_success "🎉 Your Laravel + Livewire + Filament + Alpine + Tailwind development environment is ready!"
     echo ""
     
-    # Count successful MCP servers for this project
-    PROJECT_MCP_COUNT=$(claude mcp list | grep -E "^(filesystem|memory|github|webfetch|database|context7|debugbar)-$PROJECT_ID" | wc -l | tr -d ' ')
+    # Count successful MCP servers
+    GLOBAL_MCP_COUNT=$(claude mcp list | grep -E "^(github|memory|context7|webfetch)[[:space:]]" | wc -l | tr -d ' ')
+    PROJECT_MCP_COUNT=$(claude mcp list | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | wc -l | tr -d ' ')
     TOTAL_MCP_COUNT=$(claude mcp list | wc -l | tr -d ' ')
     
-    if [ "$PROJECT_MCP_COUNT" -ge 4 ]; then
-        print_success "✅ All core MCP servers installed successfully for $PROJECT_NAME! ($PROJECT_MCP_COUNT project servers, $TOTAL_MCP_COUNT total)"
-        if [ "$TOTAL_MCP_COUNT" -gt "$PROJECT_MCP_COUNT" ]; then
-            print_status "🎯 You now have multiple Laravel projects configured simultaneously!"
-        fi
-    elif [ "$PROJECT_MCP_COUNT" -ge 2 ]; then
-        print_warning "⚠️ Most MCP servers installed for $PROJECT_NAME ($PROJECT_MCP_COUNT project servers) - you're ready to code!"
+    if [ "$GLOBAL_MCP_COUNT" -ge 2 ] && [ "$PROJECT_MCP_COUNT" -ge 1 ]; then
+        print_success "✅ All core MCP servers installed successfully!"
+        print_status "Global servers: $GLOBAL_MCP_COUNT | Project servers: $PROJECT_MCP_COUNT | Total: $TOTAL_MCP_COUNT"
     else
-        print_warning "⚠️ Some MCP servers may have failed to install for $PROJECT_NAME ($PROJECT_MCP_COUNT project servers)"
+        print_warning "⚠️ Some MCP servers may have failed to install"
+        print_status "Global servers: $GLOBAL_MCP_COUNT | Project servers: $PROJECT_MCP_COUNT | Total: $TOTAL_MCP_COUNT"
         print_status "Check the output above for any error messages"
     fi
 }

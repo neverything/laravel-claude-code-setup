@@ -5,13 +5,19 @@
 ## 🎯 What This Does
 
 Installs and configures Claude Code with:
-- ✅ **Filesystem access** - Read/write your Laravel project files
-- ✅ **Database integration** - Direct database queries and migrations
-- ✅ **GitHub integration** - Access private repos, manage PRs
-- ✅ **Memory system** - Remember project decisions across sessions
+
+### Global MCP Servers (shared across all projects)
+- ✅ **GitHub integration** - Access all your repositories, manage PRs (with automatic token configuration!)
+- ✅ **Memory system** - Remember decisions across all projects
 - ✅ **Context7** - Latest Laravel/PHP documentation access
 - ✅ **Web fetch** - Access external APIs and resources
+
+### Project-Specific MCP Servers
+- ✅ **Filesystem access** - Read/write your specific Laravel project files
+- ✅ **Database integration** - Direct access to your project's database
 - ✅ **Laravel DebugBar** - Real-time debugging (if installed)
+
+The installer intelligently sets up global servers once and adds project-specific servers for each Laravel project.
 
 ## 🚀 Quick Install
 
@@ -77,57 +83,85 @@ cd /path/to/your/laravel/project
 claude
 ```
 
-Then try these commands to test everything works:
+Then test everything works:
 
 - "Show me the database structure"
-- "List recent commits from my GitHub repo"
+- "List commits from my private GitHub repo"
 - "Read my .env file"
 - "What Laravel version is this project using?"
 - "Remember that we use Filament for admin panels"
 
+The installer automatically configures your GitHub token for private repository access!
+
 ## 🛠️ What Gets Installed
 
-The script will:
+The script intelligently manages global vs project-specific resources:
 
-1. **Install MCP Servers**:
-   - Filesystem MCP Server
-   - Database MCP Server (with your Laravel DB config)
-   - GitHub MCP Server
-   - Memory MCP Server
-   - Context7 (documentation access)
-   - Web Fetch MCP Server
-   - Laravel DebugBar MCP (if available)
+### Global MCP Servers (installed once, shared by all projects)
+1. **GitHub MCP Server** - Repository access across all projects
+2. **Memory MCP Server** - Shared knowledge base
+3. **Context7** - Documentation access 
+4. **Web Fetch** - External API access
 
-2. **Create Project Files** in `.claude/`:
-   - Project context and instructions
-   - Coding standards
-   - Development shortcuts
-   - Memory initialization
+### Project-Specific MCP Servers (per Laravel project)
+1. **Filesystem MCP Server** - Access to your project files
+2. **Database MCP Server** - Connected to your project's database
+3. **Laravel DebugBar MCP** (if available)
 
-3. **Configure Everything** automatically based on your Laravel `.env`
+### Project Files (created in `.claude/`)
+- Project context and instructions
+- Coding standards
+- Development shortcuts
+- Memory initialization
+
+The installer automatically configures everything based on your Laravel `.env` file.
 
 ## 🔧 Manual Installation
 
 If you prefer to install components manually, check the [manual installation guide](docs/MANUAL_INSTALL.md).
 
-## 🐛 Troubleshooting
+## ⚠️ Important: GitHub Private Repository Access
 
-### GitHub Private Repos Not Working?
+**Note:** The GitHub MCP server requires manual configuration for private repository access due to how Claude Code handles environment variables.
 
-The GitHub MCP server needs the token in the Claude Code config. The installer handles this automatically, but if you need to fix it manually:
+### Quick Fix for Private Repos
 
-1. Edit `~/.config/claude-code/config.json`
-2. Find your github server entry
-3. Add the environment variable:
+After running the installer, if you can't access private repositories:
+
+1. Open your Claude Code config:
+```bash
+nano ~/.config/claude-code/config.json
+```
+
+2. Find your GitHub server entry (e.g., `github-yourproject`)
+
+3. Add your token to the environment section:
 ```json
 "github-yourproject": {
   "command": "npx",
   "args": ["@modelcontextprotocol/server-github"],
   "env": {
-    "GITHUB_PERSONAL_ACCESS_TOKEN": "your_token_here"
+    "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_YourTokenHere"
   }
 }
 ```
+
+4. Save and restart Claude Code
+
+### Alternative: Use the Wrapper Script
+
+The installer creates a wrapper script that should handle this automatically. If it's not working:
+
+```bash
+# Check if the wrapper exists
+ls ~/.config/claude-code/mcp-servers/github-wrapper-*.sh
+
+# Re-run just the GitHub MCP setup
+claude mcp remove github-yourproject
+claude mcp add github-yourproject ~/.config/claude-code/mcp-servers/github-wrapper-yourproject.sh
+```
+
+## 🐛 Other Troubleshooting
 
 ### Database Connection Failed?
 
