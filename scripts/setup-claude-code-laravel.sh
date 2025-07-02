@@ -3,7 +3,7 @@
 # Laravel Claude Code Setup Script
 # Automatically configures Claude Code with MCP servers for Laravel development
 # Author: Laravel Developer
-# Version: 1.9.8 - Fixed GitHub token configuration
+# Version: 1.9.9 - Fixed GitHub token configuration in project-specific MCP servers
 
 set -e  # Exit on any error
 
@@ -506,6 +506,7 @@ DBEOF
 update_github_token_in_config() {
     local CONFIG_FILE="$HOME/.claude.json"
     local TOKEN="$1"
+    local PROJECT_PATH="$2"
     
     if [ ! -f "$CONFIG_FILE" ]; then
         print_warning "Claude config file not found at $CONFIG_FILE"
@@ -517,8 +518,16 @@ update_github_token_in_config() {
     
     # Try jq first (cleanest method)
     if command -v jq &> /dev/null; then
-        if jq --arg token "$TOKEN" \
-           '.mcpServers.github.env.GITHUB_PERSONAL_ACCESS_TOKEN = $token' \
+        # Update both global and project-specific GitHub server configs
+        if jq --arg token "$TOKEN" --arg project "$PROJECT_PATH" \
+           '# Update global config if it exists
+            if .mcpServers.github then
+              .mcpServers.github.env.GITHUB_PERSONAL_ACCESS_TOKEN = $token
+            else . end |
+            # Update project-specific config
+            if .projects[$project].mcpServers.github then
+              .projects[$project].mcpServers.github.env.GITHUB_PERSONAL_ACCESS_TOKEN = $token
+            else . end' \
            "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"; then
             print_success "GitHub token configured using jq!"
             return 0
@@ -536,16 +545,25 @@ try:
     with open('$CONFIG_FILE', 'r') as f:
         config = json.load(f)
     
-    if 'mcpServers' in config and 'github' in config['mcpServers']:
+    # Update global config if it exists
+    if 'mcpServers' in config:
+        if 'github' not in config['mcpServers']:
+            config['mcpServers']['github'] = {}
         if 'env' not in config['mcpServers']['github']:
             config['mcpServers']['github']['env'] = {}
         config['mcpServers']['github']['env']['GITHUB_PERSONAL_ACCESS_TOKEN'] = '$TOKEN'
-        
-        with open('$CONFIG_FILE', 'w') as f:
-            json.dump(config, f, indent=2)
-        print("SUCCESS")
-    else:
-        print("GITHUB_NOT_FOUND")
+    
+    # Update project-specific config
+    if 'projects' in config and '$PROJECT_PATH' in config['projects']:
+        project = config['projects']['$PROJECT_PATH']
+        if 'mcpServers' in project and 'github' in project['mcpServers']:
+            if 'env' not in project['mcpServers']['github']:
+                project['mcpServers']['github']['env'] = {}
+            project['mcpServers']['github']['env']['GITHUB_PERSONAL_ACCESS_TOKEN'] = '$TOKEN'
+    
+    with open('$CONFIG_FILE', 'w') as f:
+        json.dump(config, f, indent=2)
+    print("SUCCESS")
 except Exception as e:
     print(f"ERROR: {e}")
 PYTHON_EOF
@@ -598,14 +616,26 @@ configure_claude_mcp() {
                 # Configure token if available
                 if [ "$GITHUB_AUTH_METHOD" = "token" ] && [ ! -z "$GITHUB_TOKEN" ]; then
                     print_status "Configuring GitHub token..."
-                    if update_github_token_in_config "$GITHUB_TOKEN"; then
+                    # Pass the project path to the update function
+                    if update_github_token_in_config "$GITHUB_TOKEN" "$PROJECT_PATH"; then
                         print_success "GitHub token configured successfully!"
                     else
                         print_warning "⚠️  Manual configuration required for GitHub private repo access"
                         echo ""
-                        echo "Please edit ~/.claude.json and add your token to the 'github' server:"
+                        echo "Please edit ~/.claude.json and add your token to BOTH:"
                         echo ""
+                        echo "1. Global config (at the bottom of file):"
+                        echo '  "mcpServers": {'
+                        echo '    "github": {'
+                        echo '      "env": {'
+                        echo '        "GITHUB_PERSONAL_ACCESS_TOKEN": "'$GITHUB_TOKEN'"'
+                        echo '      }'
+                        echo '    }'
+                        echo '  }'
+                        echo ""
+                        echo "2. Project-specific config (in projects.'$PROJECT_PATH'.mcpServers):"
                         echo '  "github": {'
+                        echo '    "type": "stdio",'
                         echo '    "command": "npx",'
                         echo '    "args": ["@modelcontextprotocol/server-github"],'
                         echo '    "env": {'
@@ -626,16 +656,21 @@ configure_claude_mcp() {
         if [ "$GITHUB_AUTH_METHOD" = "token" ] && [ ! -z "$GITHUB_TOKEN" ]; then
             CONFIG_FILE="$HOME/.claude.json"
             if [ -f "$CONFIG_FILE" ]; then
-                if ! grep -q "GITHUB_PERSONAL_ACCESS_TOKEN" "$CONFIG_FILE"; then
-                    print_warning "GitHub server exists but token not configured"
+                # Check if token is configured in the project-specific config
+                PROJECT_HAS_TOKEN=$(jq -r --arg project "$PROJECT_PATH" \
+                    '.projects[$project].mcpServers.github.env.GITHUB_PERSONAL_ACCESS_TOKEN // "not_found"' \
+                    "$CONFIG_FILE" 2>/dev/null)
+                
+                if [ "$PROJECT_HAS_TOKEN" = "not_found" ] || [ -z "$PROJECT_HAS_TOKEN" ]; then
+                    print_warning "GitHub server exists but token not configured in project"
                     print_status "Configuring GitHub token..."
-                    if update_github_token_in_config "$GITHUB_TOKEN"; then
+                    if update_github_token_in_config "$GITHUB_TOKEN" "$PROJECT_PATH"; then
                         print_success "GitHub token configured successfully!"
                     else
                         print_warning "Please manually add your GitHub token to ~/.claude.json"
                     fi
                 else
-                    print_status "GitHub token already configured"
+                    print_status "GitHub token already configured in project"
                 fi
             fi
         fi
@@ -1153,8 +1188,8 @@ EOF
 
 # Main installation function
 main() {
-    echo "======================================"
-    echo "Laravel Claude Code Setup Script v1.9.8"
+        echo "======================================"
+    echo "Laravel Claude Code Setup Script v1.9"
     echo "======================================"
     echo ""
     
@@ -1284,10 +1319,19 @@ main() {
     # GitHub token configuration reminder
     if [ "$GITHUB_AUTH_METHOD" = "token" ] && [ ! -z "$GITHUB_TOKEN" ]; then
         CONFIG_FILE="$HOME/.claude.json"
-        if [ -f "$CONFIG_FILE" ] && ! grep -q "GITHUB_PERSONAL_ACCESS_TOKEN" "$CONFIG_FILE"; then
-            echo ""
-            print_warning "⚠️  GitHub token may need manual configuration"
-            echo "If private repository access doesn't work, edit ~/.claude.json"
+        if [ -f "$CONFIG_FILE" ]; then
+            # Check if token is properly configured in project-specific config
+            PROJECT_HAS_TOKEN=$(jq -r --arg project "$PROJECT_PATH" \
+                '.projects[$project].mcpServers.github.env.GITHUB_PERSONAL_ACCESS_TOKEN // "not_found"' \
+                "$CONFIG_FILE" 2>/dev/null)
+            
+            if [ "$PROJECT_HAS_TOKEN" = "not_found" ] || [ -z "$PROJECT_HAS_TOKEN" ]; then
+                echo ""
+                print_warning "⚠️  GitHub token may need manual configuration"
+                echo "If private repository access doesn't work, edit ~/.claude.json"
+                echo "and ensure the token is in the project-specific GitHub config:"
+                echo "projects.'$PROJECT_PATH'.mcpServers.github.env.GITHUB_PERSONAL_ACCESS_TOKEN"
+            fi
         fi
     fi
 }
