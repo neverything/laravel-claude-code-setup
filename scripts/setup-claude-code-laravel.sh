@@ -3,7 +3,7 @@
 # Laravel Claude Code Setup Script
 # Automatically configures Claude Code with MCP servers for Laravel development
 # Author: Laravel Developer
-# Version: 1.8 - Fixed GitHub token configuration
+# Version: 1.9.7 - Fixed GitHub token configuration
 
 set -e  # Exit on any error
 
