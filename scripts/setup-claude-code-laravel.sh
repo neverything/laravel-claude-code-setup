@@ -323,12 +323,7 @@ install_memory() {
     
     npm install -g @modelcontextprotocol/server-memory
     
-    # Create project-specific memory directory
-    MEMORY_DIR="$PROJECT_PATH/.claude/memory"
-    mkdir -p "$MEMORY_DIR"
-    
     print_success "Memory MCP Server installed!"
-    print_status "Memory will be stored in: $MEMORY_DIR"
 }
 
 # Install Laravel Documentation MCP Server
@@ -516,6 +511,7 @@ create_project_prompts() {
     
     PROJECT_NAME=$(basename "$PWD")
     mkdir -p ".claude"
+    mkdir -p ".claude/memory"
     
     cat > ".claude/project_context.md" << EOF
 # $PROJECT_NAME - Laravel Project Context
