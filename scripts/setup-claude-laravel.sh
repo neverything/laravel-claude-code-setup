@@ -173,7 +173,19 @@ install_filesystem() {
 
 # Install Database MCP Server
 install_database() {
-    print_status "Installing Database MCP Server..."
+    print_status "Installing Database MCP Server (Go-based)..."
+    
+    # Check if Go is installed
+    if ! command -v go &> /dev/null; then
+        print_warning "Go is not installed. Installing via Homebrew..."
+        if command -v brew &> /dev/null; then
+            brew install go
+        else
+            print_error "Go is required but not installed. Please install Go first."
+            print_status "Install with: brew install go"
+            return 1
+        fi
+    fi
     
     cd "$MCP_DIR"
     
@@ -182,30 +194,34 @@ install_database() {
     fi
     
     cd db-mcp-server
-    npm install
     
-    # Validate required database environment variables
-    if [ -z "$DB_DATABASE" ]; then
-        print_warning "DB_DATABASE not set in .env file"
-        return 0  # Skip database MCP if no database configured
+    # Build the Go project
+    print_status "Building Go database MCP server..."
+    if [ -f "Makefile" ]; then
+        make build
+    else
+        go build -o db-mcp-server ./cmd/...
     fi
     
     # Auto-generate config file from Laravel .env
     print_status "Generating database configuration from .env..."
-    print_status "Database type: $DB_CONNECTION"
-    print_status "Database name: $DB_DATABASE"
     
-    # Determine the correct database type for the config
+    # Validate required database environment variables
+    if [ -z "$DB_DATABASE" ]; then
+        print_warning "DB_DATABASE not set in .env file, skipping database MCP"
+        return 0
+    fi
+    
+    # Determine the correct database type
     case "$DB_CONNECTION" in
         "mysql")
             DB_TYPE="mysql"
             ;;
         "pgsql"|"postgres"|"postgresql")
-            DB_TYPE="postgres"  # FreePeak uses "postgres" not "postgresql"
+            DB_TYPE="postgres"
             ;;
         "sqlite")
             DB_TYPE="sqlite"
-            # For SQLite, construct the full path
             if [[ "$DB_DATABASE" == /* ]]; then
                 DB_PATH="$DB_DATABASE"
             else
@@ -213,7 +229,7 @@ install_database() {
             fi
             ;;
         *)
-            DB_TYPE="mysql"  # Default fallback
+            DB_TYPE="mysql"
             print_warning "Unknown database type: $DB_CONNECTION, defaulting to MySQL"
             ;;
     esac
@@ -259,19 +275,7 @@ EOF
 EOF
     fi
     
-    # Validate the generated config
-    if [ -f "config.json" ]; then
-        print_success "Database configuration created successfully"
-        print_status "Config location: $MCP_DIR/db-mcp-server/config.json"
-        
-        # Show the generated config for debugging
-        print_status "Generated configuration:"
-        cat config.json | head -10
-    else
-        print_error "Failed to create database configuration"
-        return 1
-    fi
-    
+    print_success "Database configuration created!"
     print_success "Database MCP Server installed and configured!"
 }
 
@@ -457,11 +461,9 @@ cat > "$HOME/.config/claude-code/claude_desktop_config.json" << EOF
       "env": {}
     },
     "database": {
-        "command": "node",
-        "args": ["$MCP_DIR/db-mcp-server/build/index.js"],
-        "env": {
-            "DATABASE_URL": "$DB_CONNECTION_STRING"
-        }
+        "command": "$MCP_DIR/db-mcp-server/db-mcp-server",
+        "args": ["--config", "$MCP_DIR/db-mcp-server/config.json"],
+        "env": {}
     },
     "pdf": {
       "command": "npx",
