@@ -175,10 +175,104 @@ install_filesystem() {
 install_database() {
     print_status "Installing Database MCP Server..."
     
-    npm install -g @modelcontextprotocol/server-postgres
-    npm install -g @modelcontextprotocol/server-sqlite
+    cd "$MCP_DIR"
     
-    print_success "Database MCP Servers installed!"
+    if [ ! -d "db-mcp-server" ]; then
+        git clone https://github.com/FreePeak/db-mcp-server.git db-mcp-server
+    fi
+    
+    cd db-mcp-server
+    npm install
+    
+    # Validate required database environment variables
+    if [ -z "$DB_DATABASE" ]; then
+        print_warning "DB_DATABASE not set in .env file"
+        return 0  # Skip database MCP if no database configured
+    fi
+    
+    # Auto-generate config file from Laravel .env
+    print_status "Generating database configuration from .env..."
+    print_status "Database type: $DB_CONNECTION"
+    print_status "Database name: $DB_DATABASE"
+    
+    # Determine the correct database type for the config
+    case "$DB_CONNECTION" in
+        "mysql")
+            DB_TYPE="mysql"
+            ;;
+        "pgsql"|"postgres"|"postgresql")
+            DB_TYPE="postgres"  # FreePeak uses "postgres" not "postgresql"
+            ;;
+        "sqlite")
+            DB_TYPE="sqlite"
+            # For SQLite, construct the full path
+            if [[ "$DB_DATABASE" == /* ]]; then
+                DB_PATH="$DB_DATABASE"
+            else
+                DB_PATH="$PROJECT_PATH/database/$DB_DATABASE"
+            fi
+            ;;
+        *)
+            DB_TYPE="mysql"  # Default fallback
+            print_warning "Unknown database type: $DB_CONNECTION, defaulting to MySQL"
+            ;;
+    esac
+    
+    # Create the configuration file with correct FreePeak format
+    if [ "$DB_CONNECTION" = "sqlite" ]; then
+        cat > config.json << EOF
+{
+  "connections": [
+    {
+      "id": "laravel",
+      "type": "$DB_TYPE",
+      "database": "$DB_PATH",
+      "query_timeout": 60,
+      "max_open_conns": 10,
+      "max_idle_conns": 2,
+      "conn_max_lifetime_seconds": 300,
+      "conn_max_idle_time_seconds": 60
+    }
+  ]
+}
+EOF
+    else
+        cat > config.json << EOF
+{
+  "connections": [
+    {
+      "id": "laravel",
+      "type": "$DB_TYPE",
+      "host": "$DB_HOST",
+      "port": $DB_PORT,
+      "name": "$DB_DATABASE",
+      "user": "$DB_USERNAME",
+      "password": "$DB_PASSWORD",
+      "query_timeout": 60,
+      "max_open_conns": 20,
+      "max_idle_conns": 5,
+      "conn_max_lifetime_seconds": 300,
+      "conn_max_idle_time_seconds": 60
+    }
+  ]
+}
+EOF
+    fi
+    
+    # Validate the generated config
+    if [ -f "config.json" ]; then
+        print_success "Database configuration created successfully"
+        print_status "Config location: $MCP_DIR/db-mcp-server/config.json"
+        
+        # Show the generated config for debugging
+        print_status "Generated configuration:"
+        cat config.json | head -10
+    else
+        print_error "Failed to create database configuration"
+        return 1
+    fi
+    
+    print_success "Database MCP Server installed and configured!"
 }
 
 # Install PDF MCP Server
@@ -363,11 +457,11 @@ cat > "$HOME/.config/claude-code/claude_desktop_config.json" << EOF
       "env": {}
     },
     "database": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-postgres"],
-      "env": {
-        "DATABASE_URL": "$DB_CONNECTION_STRING"
-      }
+        "command": "node",
+        "args": ["$MCP_DIR/db-mcp-server/build/index.js"],
+        "env": {
+            "DATABASE_URL": "$DB_CONNECTION_STRING"
+        }
     },
     "pdf": {
       "command": "npx",
