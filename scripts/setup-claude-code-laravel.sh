@@ -153,7 +153,7 @@ install_context7() {
     cd "$MCP_DIR"
     
     if [ ! -d "context7" ]; then
-        git clone https://github.com/context7/mcp-server.git context7
+        git clone https://github.com/upstash/context7.git context7
     fi
     
     cd context7

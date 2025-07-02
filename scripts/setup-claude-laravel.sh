@@ -153,7 +153,7 @@ install_context7() {
     cd "$MCP_DIR"
     
     if [ ! -d "context7" ]; then
-        git clone https://github.com/context7/mcp-server.git context7
+        git clone https://github.com/upstash/context7.git context7
     fi
     
     cd context7
@@ -318,8 +318,36 @@ generate_config() {
         DB_CONNECTION_STRING="$DB_CONNECTION://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_DATABASE"
     fi
     
-    # Generate the configuration
-    cat > "$HOME/.config/claude-code/claude_desktop_config.json" << EOF
+    # Configure GitHub MCP based on authentication method
+    if [ "$GITHUB_AUTH_METHOD" = "ssh" ]; then
+        GITHUB_MCP_CONFIG='{
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {}'
+        if [ ! -z "$GITHUB_REPO" ]; then
+            GITHUB_MCP_CONFIG='{
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_REPOSITORY": "'$GITHUB_REPO'"
+      }'
+        fi
+    else
+        GITHUB_MCP_CONFIG='{
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "'$GITHUB_TOKEN'"'
+        if [ ! -z "$GITHUB_REPO" ]; then
+            GITHUB_MCP_CONFIG+=',
+        "GITHUB_REPOSITORY": "'$GITHUB_REPO'"'
+        fi
+        GITHUB_MCP_CONFIG+='
+      }'
+    fi
+    
+# Generate the configuration
+cat > "$HOME/.config/claude-code/claude_desktop_config.json" << EOF
 {
   "mcpServers": {
     "context7": {
@@ -351,14 +379,7 @@ generate_config() {
       "args": ["-y", "@modelcontextprotocol/server-fetch"],
       "env": {}
     },
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_TOKEN"$([ ! -z "$GITHUB_REPO" ] && echo ",
-        \"GITHUB_REPOSITORY\": \"$GITHUB_REPO\"")
-      }
-    },
+    "github": $GITHUB_MCP_CONFIG,
     "laravel_helper": {
       "command": "node",
       "args": ["$MCP_DIR/laravel-helper/build/index.js"],
