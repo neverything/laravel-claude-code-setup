@@ -3,7 +3,7 @@
 # Laravel Claude Code Setup Script
 # Automatically configures Claude Code with MCP servers for Laravel development
 # Author: Laravel Developer
-# Version: 1.4 - Enhanced GitHub token collection and authentication setup
+# Version: 1.5 - Multi-project support with project-specific MCP servers
 
 set -e  # Exit on any error
 
@@ -513,6 +513,15 @@ configure_claude_mcp() {
     print_status "Configuring Claude Code MCP servers..."
     
     PROJECT_PATH="$PWD"
+    PROJECT_NAME=$(basename "$PROJECT_PATH")
+    
+    # Create a project identifier for unique MCP server names
+    PROJECT_ID=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]//g')
+    if [ -z "$PROJECT_ID" ]; then
+        PROJECT_ID="laravel$(date +%s)"
+    fi
+    
+    print_status "Project: $PROJECT_NAME (ID: $PROJECT_ID)"
     
     # Check if claude command is available
     if ! command -v claude &> /dev/null; then
@@ -520,32 +529,37 @@ configure_claude_mcp() {
         return 1
     fi
     
-    # Remove any existing servers first to avoid conflicts
-    print_status "Cleaning up existing MCP servers..."
-    claude mcp list 2>/dev/null | grep -E "^[a-z]" | awk '{print $1}' | xargs -I {} claude mcp remove {} 2>/dev/null || true
+    # Remove any existing servers for this project (clean reinstall)
+    print_status "Cleaning up existing MCP servers for this project..."
+    claude mcp list 2>/dev/null | grep -E "^(filesystem|memory|github|webfetch|database|context7)-$PROJECT_ID" | awk '{print $1}' | xargs -I {} claude mcp remove {} 2>/dev/null || true
     
-    print_status "Adding Filesystem MCP server..."
-    if claude mcp add filesystem npx @modelcontextprotocol/server-filesystem "$PROJECT_PATH"; then
-        print_success "Filesystem MCP server added"
+    print_status "Adding project-specific MCP servers..."
+    
+    # Add Filesystem MCP server (project-specific)
+    print_status "Adding Filesystem MCP server for $PROJECT_NAME..."
+    if claude mcp add "filesystem-$PROJECT_ID" npx @modelcontextprotocol/server-filesystem "$PROJECT_PATH"; then
+        print_success "Filesystem MCP server added: filesystem-$PROJECT_ID"
     else
         print_warning "Failed to add Filesystem MCP server"
     fi
     
-    print_status "Adding Memory MCP server..."
-    if claude mcp add memory npx @modelcontextprotocol/server-memory; then
-        print_success "Memory MCP server added"
+    # Add Memory MCP server (project-specific)
+    print_status "Adding Memory MCP server for $PROJECT_NAME..."
+    if claude mcp add "memory-$PROJECT_ID" npx @modelcontextprotocol/server-memory; then
+        print_success "Memory MCP server added: memory-$PROJECT_ID"
     else
         print_warning "Failed to add Memory MCP server"
     fi
     
-    print_status "Adding GitHub MCP server..."
+    # Add GitHub MCP server (project-specific)
+    print_status "Adding GitHub MCP server for $PROJECT_NAME..."
     if [ "$GITHUB_AUTH_METHOD" = "token" ] && [ ! -z "$GITHUB_TOKEN" ]; then
         # Configure GitHub MCP with token authentication
         # Note: GitHub MCP server gets token via environment variable, not command flags
         print_status "Configuring GitHub MCP with token authentication"
         
-        # Create a wrapper script that sets the environment variable
-        GITHUB_WRAPPER="$MCP_DIR/github-wrapper.sh"
+        # Create a project-specific wrapper script that sets the environment variable
+        GITHUB_WRAPPER="$MCP_DIR/github-wrapper-$PROJECT_ID.sh"
         cat > "$GITHUB_WRAPPER" << WRAPPER_EOF
 #!/bin/bash
 export GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_TOKEN"
@@ -553,27 +567,20 @@ exec npx @modelcontextprotocol/server-github "\$@"
 WRAPPER_EOF
         chmod +x "$GITHUB_WRAPPER"
         
-        if claude mcp add github "$GITHUB_WRAPPER"; then
-            print_success "GitHub MCP server added with token authentication (all repositories)"
+        if claude mcp add "github-$PROJECT_ID" "$GITHUB_WRAPPER"; then
+            print_success "GitHub MCP server added: github-$PROJECT_ID (with token authentication)"
             if [ ! -z "$GITHUB_REPO" ]; then
-                print_status "Note: Repository-specific flags not supported, but you have access to all your repositories including: $GITHUB_REPO"
+                print_status "Note: You have access to all your repositories including: $GITHUB_REPO"
             fi
         else
-            print_error "Failed to add GitHub MCP server with wrapper script"
-            print_status "Falling back to direct method..."
-            # Fallback: try direct method
-            if GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_TOKEN" claude mcp add github npx @modelcontextprotocol/server-github; then
-                print_success "GitHub MCP server added with token authentication (fallback method)"
-            else
-                print_error "Failed to add GitHub MCP server"
-                print_status "Manual fix needed - see documentation for GitHub MCP setup"
-            fi
+            print_error "Failed to add GitHub MCP server"
+            print_status "Manual fix: claude mcp add github-$PROJECT_ID $GITHUB_WRAPPER"
         fi
     elif [ "$GITHUB_AUTH_METHOD" = "ssh" ]; then
         # Configure GitHub MCP with SSH (limited functionality for private repos)
         print_warning "SSH authentication has limited access to private repositories via MCP"
-        if claude mcp add github npx @modelcontextprotocol/server-github; then
-            print_success "GitHub MCP server added with SSH authentication"
+        if claude mcp add "github-$PROJECT_ID" npx @modelcontextprotocol/server-github; then
+            print_success "GitHub MCP server added: github-$PROJECT_ID (SSH authentication)"
             print_warning "Note: SSH authentication may not work for private repository data via MCP"
             print_status "Consider using a Personal Access Token for full private repository access"
         else
@@ -583,11 +590,11 @@ WRAPPER_EOF
         print_status "Skipping GitHub MCP server (no authentication configured)"
     fi
     
-    # Add Context7 if build exists
+    # Add Context7 if build exists (project-specific)
     if [ -f "$MCP_DIR/context7/dist/index.js" ]; then
-        print_status "Adding Context7 MCP server..."
-        if claude mcp add context7 node "$MCP_DIR/context7/dist/index.js"; then
-            print_success "Context7 MCP server added"
+        print_status "Adding Context7 MCP server for $PROJECT_NAME..."
+        if claude mcp add "context7-$PROJECT_ID" node "$MCP_DIR/context7/dist/index.js"; then
+            print_success "Context7 MCP server added: context7-$PROJECT_ID"
         else
             print_warning "Failed to add Context7 MCP server"
         fi
@@ -597,11 +604,11 @@ WRAPPER_EOF
         print_status "Note: Context7 builds to dist/index.js not build/index.js"
     fi
     
-    # Add Web Fetch if build exists
+    # Add Web Fetch if build exists (project-specific)
     if [ -f "$MCP_DIR/fetch-mcp/dist/index.js" ]; then
-        print_status "Adding Web Fetch MCP server..."
-        if claude mcp add webfetch node "$MCP_DIR/fetch-mcp/dist/index.js"; then
-            print_success "Web Fetch MCP server added"
+        print_status "Adding Web Fetch MCP server for $PROJECT_NAME..."
+        if claude mcp add "webfetch-$PROJECT_ID" node "$MCP_DIR/fetch-mcp/dist/index.js"; then
+            print_success "Web Fetch MCP server added: webfetch-$PROJECT_ID"
         else
             print_warning "Failed to add Web Fetch MCP server"
         fi
@@ -609,8 +616,12 @@ WRAPPER_EOF
         print_warning "Web Fetch build not found, skipping Web Fetch MCP server"
     fi
     
-    # Add Database if binary exists and database is configured
+    # Add Database if binary exists and database is configured (project-specific)
     if [ -f "$MCP_DIR/db-mcp-server/config.json" ] && [ ! -z "$DB_DATABASE" ]; then
+        # Create project-specific database config
+        PROJECT_DB_CONFIG="$MCP_DIR/db-mcp-server/config-$PROJECT_ID.json"
+        cp "$MCP_DIR/db-mcp-server/config.json" "$PROJECT_DB_CONFIG"
+        
         # Try different possible binary locations
         DB_BINARY=""
         if [ -f "$MCP_DIR/db-mcp-server/bin/server" ]; then
@@ -620,24 +631,24 @@ WRAPPER_EOF
         fi
         
         if [ ! -z "$DB_BINARY" ] && [ -x "$DB_BINARY" ]; then
-            print_status "Adding Database MCP server..."
+            print_status "Adding Database MCP server for $PROJECT_NAME..."
             # Try the format that Claude Code expects for stdio servers with config
-            if claude mcp add database "$DB_BINARY" -- -t stdio -c "$MCP_DIR/db-mcp-server/config.json"; then
-                print_success "Database MCP server added"
+            if claude mcp add "database-$PROJECT_ID" "$DB_BINARY" -- -t stdio -c "$PROJECT_DB_CONFIG"; then
+                print_success "Database MCP server added: database-$PROJECT_ID"
             else
                 print_warning "Failed with -- separator, trying without separator..."
                 # Try without the -- separator
-                if claude mcp add database "$DB_BINARY" -t stdio -c "$MCP_DIR/db-mcp-server/config.json"; then
-                    print_success "Database MCP server added"
+                if claude mcp add "database-$PROJECT_ID" "$DB_BINARY" -t stdio -c "$PROJECT_DB_CONFIG"; then
+                    print_success "Database MCP server added: database-$PROJECT_ID"
                 else
                     print_warning "Failed with flags, trying config-only format..."
                     # Try with just the config file
-                    if claude mcp add database "$DB_BINARY" "$MCP_DIR/db-mcp-server/config.json"; then
-                        print_success "Database MCP server added (config-only format)"
+                    if claude mcp add "database-$PROJECT_ID" "$DB_BINARY" "$PROJECT_DB_CONFIG"; then
+                        print_success "Database MCP server added: database-$PROJECT_ID (config-only format)"
                     else
                         print_error "All database MCP add formats failed"
                         print_status "Skipping database MCP - other servers will work perfectly"
-                        print_status "Manual fix: claude mcp add database $DB_BINARY -- -t stdio -c $MCP_DIR/db-mcp-server/config.json"
+                        print_status "Manual fix: claude mcp add database-$PROJECT_ID $DB_BINARY -- -t stdio -c $PROJECT_DB_CONFIG"
                     fi
                 fi
             fi
@@ -653,11 +664,11 @@ WRAPPER_EOF
         fi
     fi
     
-    # Add Laravel DebugBar MCP if available
+    # Add Laravel DebugBar MCP if available (project-specific)
     if grep -q "barryvdh/laravel-debugbar" composer.json 2>/dev/null; then
-        print_status "Adding Laravel DebugBar MCP server..."
-        if LARAVEL_PROJECT_PATH="$PROJECT_PATH" claude mcp add debugbar npx @sebdesign/debugbar-mcp-server; then
-            print_success "Laravel DebugBar MCP server added"
+        print_status "Adding Laravel DebugBar MCP server for $PROJECT_NAME..."
+        if LARAVEL_PROJECT_PATH="$PROJECT_PATH" claude mcp add "debugbar-$PROJECT_ID" npx @sebdesign/debugbar-mcp-server; then
+            print_success "Laravel DebugBar MCP server added: debugbar-$PROJECT_ID"
         else
             print_warning "Failed to add Laravel DebugBar MCP server"
         fi
@@ -670,6 +681,17 @@ WRAPPER_EOF
     claude mcp list
     
     print_success "Claude Code MCP configuration completed!"
+    
+    # Show project-specific servers
+    echo ""
+    print_status "Project-specific MCP servers created:"
+    claude mcp list | grep -E "^(filesystem|memory|github|webfetch|database|context7|debugbar)-$PROJECT_ID" | sed 's/^/  ✅ /' || true
+    echo ""
+    print_status "💡 Tips for using multiple projects:"
+    echo "  • All your projects' MCP servers are available simultaneously"
+    echo "  • Use project names in requests: 'Read .env from $PROJECT_NAME'"
+    echo "  • Ask: 'List all my Laravel projects' to see available projects"
+    echo "  • Database queries: 'Show tables from $PROJECT_NAME database'"
 }
 
 # Create project-specific Claude prompts
@@ -1184,14 +1206,19 @@ main() {
     print_success "🎉 Your Laravel + Livewire + Filament + Alpine + Tailwind development environment is ready!"
     echo ""
     
-    # Count successful MCP servers
-    MCP_COUNT=$(claude mcp list | wc -l | tr -d ' ')
-    if [ "$MCP_COUNT" -ge 5 ]; then
-        print_success "✅ All core MCP servers installed successfully! ($MCP_COUNT servers active)"
-    elif [ "$MCP_COUNT" -ge 3 ]; then
-        print_warning "⚠️ Most MCP servers installed ($MCP_COUNT servers active) - you're ready to code!"
+    # Count successful MCP servers for this project
+    PROJECT_MCP_COUNT=$(claude mcp list | grep -E "^(filesystem|memory|github|webfetch|database|context7|debugbar)-$PROJECT_ID" | wc -l | tr -d ' ')
+    TOTAL_MCP_COUNT=$(claude mcp list | wc -l | tr -d ' ')
+    
+    if [ "$PROJECT_MCP_COUNT" -ge 4 ]; then
+        print_success "✅ All core MCP servers installed successfully for $PROJECT_NAME! ($PROJECT_MCP_COUNT project servers, $TOTAL_MCP_COUNT total)"
+        if [ "$TOTAL_MCP_COUNT" -gt "$PROJECT_MCP_COUNT" ]; then
+            print_status "🎯 You now have multiple Laravel projects configured simultaneously!"
+        fi
+    elif [ "$PROJECT_MCP_COUNT" -ge 2 ]; then
+        print_warning "⚠️ Most MCP servers installed for $PROJECT_NAME ($PROJECT_MCP_COUNT project servers) - you're ready to code!"
     else
-        print_warning "⚠️ Some MCP servers may have failed to install ($MCP_COUNT servers active)"
+        print_warning "⚠️ Some MCP servers may have failed to install for $PROJECT_NAME ($PROJECT_MCP_COUNT project servers)"
         print_status "Check the output above for any error messages"
     fi
 }
