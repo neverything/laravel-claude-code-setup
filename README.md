@@ -9,11 +9,8 @@ Automatically configures Claude Code with essential MCP servers for Laravel proj
 - 🧠 **Memory MCP** - Persistent AI memory across sessions
 - 📁 **Filesystem Access** - Read and edit project files  
 - 🗄️ **Database Integration** - Direct database operations from .env
-- 🎨 **Laravel Docs** - Instant access to Laravel documentation
-- ⚡ **Artisan Commands** - Run Laravel commands through AI
 - 🐙 **GitHub Integration** - Repository management
 - 🔍 **DebugBar Support** - Optional debugging integration
-- 📄 **PDF Reading** - Documentation analysis
 - 🌐 **Web Fetch** - Internet connectivity for AI
 
 ## 🚀 One-Line Installation
@@ -38,12 +35,9 @@ curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/m
 | **Context7** | Latest documentation access |
 | **Filesystem** | File operations |
 | **Database** | Database operations from .env |
-| **Laravel Helper** | Artisan commands |
 | **Memory** | Persistent context |
-| **Laravel Docs** | Official Laravel documentation |
 | **GitHub** | Repository management |
 | **Web Fetch** | Internet access |
-| **PDF Reader** | Document analysis |
 | **DebugBar** | Optional debugging (if detected) |
 
 ## 🔧 Usage
