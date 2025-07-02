@@ -3,7 +3,7 @@
 # Laravel Claude Code Setup Script
 # Automatically configures Claude Code with MCP servers for Laravel development
 # Author: Laravel Developer
-# Version: 1.2 - Removed PDF MCP server to prevent installation issues
+# Version: 1.3 - Fixed Context7 build process and database MCP configuration
 
 set -e  # Exit on any error
 
@@ -152,14 +152,39 @@ install_context7() {
     
     cd "$MCP_DIR"
     
-    if [ ! -d "context7" ]; then
-        git clone https://github.com/upstash/context7.git context7
+    # Clean install if directory exists
+    if [ -d "context7" ]; then
+        print_status "Removing existing context7 installation..."
+        rm -rf context7
+    fi
+    
+    print_status "Cloning Context7 repository..."
+    if ! git clone https://github.com/upstash/context7.git context7; then
+        print_error "Failed to clone Context7 repository"
+        return 1
     fi
     
     cd context7
-    npm install
     
-    print_success "Context7 MCP Server installed!"
+    print_status "Installing Context7 dependencies..."
+    if ! npm install; then
+        print_error "Failed to install Context7 dependencies"
+        return 1
+    fi
+    
+    print_status "Building Context7..."
+    if ! npm run build; then
+        print_error "Failed to build Context7"
+        return 1
+    fi
+    
+    # Verify the build was successful (Context7 builds to dist/index.js, not build/index.js)
+    if [ -f "dist/index.js" ]; then
+        print_success "Context7 MCP Server installed and built successfully!"
+    else
+        print_error "Context7 build failed - dist/index.js not found"
+        return 1
+    fi
 }
 
 # Install Filesystem MCP Server
@@ -175,35 +200,84 @@ install_filesystem() {
 install_database() {
     print_status "Installing Database MCP Server (Go-based)..."
     
-    # Check if Go is installed
+    # Check Go version requirement (1.22+)
     if ! command -v go &> /dev/null; then
         print_warning "Go is not installed. Installing via Homebrew..."
         if command -v brew &> /dev/null; then
             brew install go
         else
             print_error "Go is required but not installed. Please install Go first."
-            print_status "Install with: brew install go"
+            print_status "Install with: brew install go (macOS) or visit https://golang.org/dl/"
             return 1
         fi
     fi
     
+    # Check Go version (must be 1.22+)
+    GO_VERSION=$(go version | grep -o 'go[0-9]*\.[0-9]*' | grep -o '[0-9]*\.[0-9]*')
+    REQUIRED_VERSION="1.22"
+    if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$GO_VERSION" | sort -V | head -n1)" != "$REQUIRED_VERSION" ]; then
+        print_error "Go version $GO_VERSION is installed, but version $REQUIRED_VERSION or higher is required."
+        print_status "Please update Go: brew upgrade go (macOS) or download from https://golang.org/dl/"
+        return 1
+    fi
+    
+    print_success "Go version $GO_VERSION meets requirements!"
+    
     cd "$MCP_DIR"
     
-    if [ ! -d "db-mcp-server" ]; then
-        git clone https://github.com/FreePeak/db-mcp-server.git db-mcp-server
+    # Clean install if directory exists
+    if [ -d "db-mcp-server" ]; then
+        print_status "Removing existing db-mcp-server installation..."
+        rm -rf db-mcp-server
+    fi
+    
+    print_status "Cloning db-mcp-server repository..."
+    if ! git clone https://github.com/FreePeak/db-mcp-server.git db-mcp-server; then
+        print_error "Failed to clone db-mcp-server repository"
+        return 1
     fi
     
     cd db-mcp-server
     
-    # Build the Go project
+    # Build the Go project with better error handling
     print_status "Building Go database MCP server..."
+    
+    # Try different build methods
     if [ -f "Makefile" ]; then
-        make build
+        print_status "Using Makefile to build..."
+        if make build; then
+            print_success "Database MCP server built successfully using Makefile!"
+        else
+            print_warning "Makefile build failed, trying direct Go build..."
+            if go build -o bin/server ./cmd/server; then
+                print_success "Database MCP server built successfully using Go build!"
+            else
+                print_error "Go build failed. Database MCP server installation failed."
+                return 1
+            fi
+        fi
     else
-        go build -o db-mcp-server ./cmd/...
+        print_status "No Makefile found, using direct Go build..."
+        # Ensure bin directory exists
+        mkdir -p bin
+        if go build -o bin/server ./cmd/server; then
+            print_success "Database MCP server built successfully!"
+        elif go build -o bin/server .; then
+            print_success "Database MCP server built successfully (fallback method)!"
+        else
+            print_error "Go build failed. Database MCP server installation failed."
+            print_status "This is optional - other MCP servers will still work."
+            return 1
+        fi
     fi
     
-    print_success "Database MCP Server installed!"
+    # Verify the binary was created
+    if [ -f "bin/server" ] || [ -f "db-mcp-server" ]; then
+        print_success "Database MCP Server installed!"
+    else
+        print_error "Database binary not found after build"
+        return 1
+    fi
 }
 
 # Install Web Fetch MCP Server
@@ -348,6 +422,9 @@ DBEOF
 DBEOF
         fi
         print_status "Database configuration created!"
+    else
+        print_warning "No database configured in .env file. Database MCP server will be skipped."
+        print_status "To enable database MCP later, configure your database in .env and re-run the script."
     fi
     
     print_success "Database configuration completed!"
@@ -412,15 +489,17 @@ configure_claude_mcp() {
     fi
     
     # Add Context7 if build exists
-    if [ -f "$MCP_DIR/context7/build/index.js" ]; then
+    if [ -f "$MCP_DIR/context7/dist/index.js" ]; then
         print_status "Adding Context7 MCP server..."
-        if PROJECT_PATH="$PROJECT_PATH" claude mcp add context7 node "$MCP_DIR/context7/build/index.js"; then
+        if claude mcp add context7 node "$MCP_DIR/context7/dist/index.js"; then
             print_success "Context7 MCP server added"
         else
             print_warning "Failed to add Context7 MCP server"
         fi
     else
         print_warning "Context7 build not found, skipping Context7 MCP server"
+        print_status "Run 'cd $MCP_DIR/context7 && npm run build' to build it manually"
+        print_status "Note: Context7 builds to dist/index.js not build/index.js"
     fi
     
     # Add Web Fetch if build exists
@@ -436,32 +515,47 @@ configure_claude_mcp() {
     fi
     
     # Add Database if binary exists and database is configured
-    if [ -f "$MCP_DIR/db-mcp-server/db-mcp-server" ] || [ -f "$MCP_DIR/db-mcp-server/bin/server" ]; then
-        if [ -f "$MCP_DIR/db-mcp-server/config.json" ] && [ ! -z "$DB_DATABASE" ]; then
+    if [ -f "$MCP_DIR/db-mcp-server/config.json" ] && [ ! -z "$DB_DATABASE" ]; then
+        # Try different possible binary locations
+        DB_BINARY=""
+        if [ -f "$MCP_DIR/db-mcp-server/bin/server" ]; then
+            DB_BINARY="$MCP_DIR/db-mcp-server/bin/server"
+        elif [ -f "$MCP_DIR/db-mcp-server/db-mcp-server" ]; then
+            DB_BINARY="$MCP_DIR/db-mcp-server/db-mcp-server"
+        fi
+        
+        if [ ! -z "$DB_BINARY" ] && [ -x "$DB_BINARY" ]; then
             print_status "Adding Database MCP server..."
-            
-            # Try different possible binary locations
-            DB_BINARY=""
-            if [ -f "$MCP_DIR/db-mcp-server/db-mcp-server" ]; then
-                DB_BINARY="$MCP_DIR/db-mcp-server/db-mcp-server"
-            elif [ -f "$MCP_DIR/db-mcp-server/bin/server" ]; then
-                DB_BINARY="$MCP_DIR/db-mcp-server/bin/server"
-            fi
-            
-            if [ ! -z "$DB_BINARY" ]; then
-                if claude mcp add database "$DB_BINARY" --config "$MCP_DIR/db-mcp-server/config.json"; then
+            # Try the format that Claude Code expects for stdio servers with config
+            if claude mcp add database "$DB_BINARY" -- -t stdio -c "$MCP_DIR/db-mcp-server/config.json"; then
+                print_success "Database MCP server added"
+            else
+                print_warning "Failed with -- separator, trying without separator..."
+                # Try without the -- separator
+                if claude mcp add database "$DB_BINARY" -t stdio -c "$MCP_DIR/db-mcp-server/config.json"; then
                     print_success "Database MCP server added"
                 else
-                    print_warning "Failed to add Database MCP server"
+                    print_warning "Failed with flags, trying config-only format..."
+                    # Try with just the config file
+                    if claude mcp add database "$DB_BINARY" "$MCP_DIR/db-mcp-server/config.json"; then
+                        print_success "Database MCP server added (config-only format)"
+                    else
+                        print_error "All database MCP add formats failed"
+                        print_status "Skipping database MCP - other servers will work perfectly"
+                        print_status "Manual fix: claude mcp add database $DB_BINARY -- -t stdio -c $MCP_DIR/db-mcp-server/config.json"
+                    fi
                 fi
-            else
-                print_warning "Database binary not found, skipping Database MCP server"
             fi
         else
-            print_warning "Database not configured or config missing, skipping Database MCP server"
+            print_warning "Database binary not found or not executable, skipping Database MCP server"
+            print_status "You can manually build it later if needed"
         fi
     else
-        print_warning "Database MCP server not built, skipping Database MCP server"
+        if [ -z "$DB_DATABASE" ]; then
+            print_status "No database configured in .env file, skipping Database MCP server"
+        else
+            print_warning "Database config missing, skipping Database MCP server"
+        fi
     fi
     
     # Add Laravel DebugBar MCP if available
@@ -979,6 +1073,9 @@ main() {
     echo ""
     print_status "🚀 Claude Code is now fully configured with MCP servers!"
     echo ""
+    print_status "📋 Installed MCP Servers:"
+    claude mcp list | sed 's/^/    /'
+    echo ""
     print_status "Next steps:"
     echo "1. Claude Code is ready to use immediately"
     echo "2. Load helpful aliases: source .claude/shortcuts.sh"
@@ -987,13 +1084,21 @@ main() {
     echo "5. Ask Claude to remember important project decisions"
     echo "6. Start coding with full AI assistance!"
     echo ""
-    print_status "Available MCP Servers:"
-    claude mcp list | sed 's/^/  /'
-    echo ""
     print_warning "💡 Pro tip: Use 'source .claude/shortcuts.sh' for Laravel aliases (pa, pam, par, etc.)"
     echo ""
     print_success "🎉 Your Laravel + Livewire + Filament + Alpine + Tailwind development environment is ready!"
     echo ""
+    
+    # Count successful MCP servers
+    MCP_COUNT=$(claude mcp list | wc -l | tr -d ' ')
+    if [ "$MCP_COUNT" -ge 5 ]; then
+        print_success "✅ All core MCP servers installed successfully! ($MCP_COUNT servers active)"
+    elif [ "$MCP_COUNT" -ge 3 ]; then
+        print_warning "⚠️ Most MCP servers installed ($MCP_COUNT servers active) - you're ready to code!"
+    else
+        print_warning "⚠️ Some MCP servers may have failed to install ($MCP_COUNT servers active)"
+        print_status "Check the output above for any error messages"
+    fi
 }
 
 # Run the main function
