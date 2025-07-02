@@ -34,7 +34,7 @@ print_error() {
 # Check if we're in a pipe and /dev/tty is available
 if [ ! -t 0 ] && [ -e /dev/tty ]; then
     # We're in a pipe, read from /dev/tty instead
-    exec < /dev/tty
+    exec 0</dev/tty
 elif [ ! -t 0 ]; then
     # We're in a pipe but /dev/tty might not be available
     print_error "This script requires interactive input. Please run it directly:"
