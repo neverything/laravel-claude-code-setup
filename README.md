@@ -1,111 +1,160 @@
 # Laravel Claude Code Setup 🚀
 
-**One-command setup for AI-powered Laravel development with Claude Code and MCP servers**
+**One-command setup** for Claude Code with Laravel development. Automatically configures all MCP servers for the ultimate AI-powered Laravel development experience.
 
-Automatically configures Claude Code with essential MCP servers for Laravel projects using **Livewire**, **Filament**, **Alpine.js**, and **Tailwind CSS**.
+## 🎯 What This Does
 
-## ✨ Features
+Installs and configures Claude Code with:
+- ✅ **Filesystem access** - Read/write your Laravel project files
+- ✅ **Database integration** - Direct database queries and migrations
+- ✅ **GitHub integration** - Access private repos, manage PRs
+- ✅ **Memory system** - Remember project decisions across sessions
+- ✅ **Context7** - Latest Laravel/PHP documentation access
+- ✅ **Web fetch** - Access external APIs and resources
+- ✅ **Laravel DebugBar** - Real-time debugging (if installed)
 
-- 🧠 **Memory MCP** - Persistent AI memory across sessions
-- 📁 **Filesystem Access** - Read and edit project files  
-- 🗄️ **Database Integration** - Direct database operations from .env
-- 🐙 **GitHub Integration** - Repository management
-- 🔍 **DebugBar Support** - Optional debugging integration
-- 🌐 **Web Fetch** - Internet connectivity for AI
+## 🚀 Quick Install
 
-## 🚀 One-Line Installation
+### Option 1: Direct Installation (Recommended)
+
+Run this single command from your Laravel project root:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh | bash
 ```
 
+### Option 2: With GitHub Token Pre-configured
+
+If you want to skip the interactive GitHub token prompt:
+
+```bash
+export GITHUB_TOKEN="your_github_personal_access_token"
+curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh | bash
+```
+
+### Option 3: Download and Run
+
+For more control or if you prefer to review the script first:
+
+```bash
+# Download the script
+curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh -o setup.sh
+
+# Make it executable
+chmod +x setup.sh
+
+# Run it
+./setup.sh
+```
 
 ## 📋 Prerequisites
 
-- macOS (tested on macOS Sonoma+)
-- Laravel project (any version)
-- [Claude Code](https://claude.ai/code) installed
-- Node.js 18+ and npm
-- Git
+Before running the installer, make sure you have:
 
-## 🎯 What Gets Installed
+1. **Claude Code** installed ([Download here](https://claude.ai/code))
+2. **Node.js & npm** installed
+3. **A Laravel project** with `.env` file configured
+4. **GitHub Personal Access Token** (the installer will guide you)
 
-| MCP Server | Purpose |
-|------------|---------|
-| **Context7** | Latest documentation access |
-| **Filesystem** | File operations |
-| **Database** | Database operations from .env |
-| **Memory** | Persistent context |
-| **GitHub** | Repository management |
-| **Web Fetch** | Internet access |
-| **DebugBar** | Optional debugging (if detected) |
+## 🔑 GitHub Token Setup
 
-## 🔧 Usage
+You'll need a GitHub Personal Access Token for private repository access:
 
-After installation, restart Claude Code and open it in your Laravel project:
+1. Go to [GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)](https://github.com/settings/tokens)
+2. Click "Generate new token (classic)"
+3. Select these scopes:
+   - ✅ `repo` (Full control of private repositories)
+   - ✅ `read:user` (Read user profile data)
+   - ✅ `user:email` (Access user email addresses)
+4. Copy the generated token when prompted by the installer
 
-```bash
-# Load helpful aliases
-source .claude/shortcuts.sh
+## 🎮 Usage After Installation
 
-# Start coding with AI assistance!
-```
-
-### Example Commands to Try:
-- `"Run php artisan route:list"`
-- `"Create a Livewire component for user management"`
-- `"Remember we use UUID primary keys in this project"`
-- `"Show me the database schema"`
-- `"Generate a Filament resource for Posts"`
-- `"Analyze this error in the logs"`
-- `"Optimize this database query"`
-
-## 🗑️ Uninstalling
+Once installed, just open Claude Code in your Laravel project:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/uninstall.sh | bash
+cd /path/to/your/laravel/project
+claude
 ```
 
-## 🛠️ Manual Installation
+Then try these commands to test everything works:
 
+- "Show me the database structure"
+- "List recent commits from my GitHub repo"
+- "Read my .env file"
+- "What Laravel version is this project using?"
+- "Remember that we use Filament for admin panels"
+
+## 🛠️ What Gets Installed
+
+The script will:
+
+1. **Install MCP Servers**:
+   - Filesystem MCP Server
+   - Database MCP Server (with your Laravel DB config)
+   - GitHub MCP Server
+   - Memory MCP Server
+   - Context7 (documentation access)
+   - Web Fetch MCP Server
+   - Laravel DebugBar MCP (if available)
+
+2. **Create Project Files** in `.claude/`:
+   - Project context and instructions
+   - Coding standards
+   - Development shortcuts
+   - Memory initialization
+
+3. **Configure Everything** automatically based on your Laravel `.env`
+
+## 🔧 Manual Installation
+
+If you prefer to install components manually, check the [manual installation guide](docs/MANUAL_INSTALL.md).
+
+## 🐛 Troubleshooting
+
+### GitHub Private Repos Not Working?
+
+The GitHub MCP server needs the token in the Claude Code config. The installer handles this automatically, but if you need to fix it manually:
+
+1. Edit `~/.config/claude-code/config.json`
+2. Find your github server entry
+3. Add the environment variable:
+```json
+"github-yourproject": {
+  "command": "npx",
+  "args": ["@modelcontextprotocol/server-github"],
+  "env": {
+    "GITHUB_PERSONAL_ACCESS_TOKEN": "your_token_here"
+  }
+}
+```
+
+### Database Connection Failed?
+
+Make sure your Laravel `.env` file has valid database credentials before running the installer.
+
+### Missing Dependencies?
+
+The installer will tell you what's missing, but you can check manually:
 ```bash
-git clone https://github.com/laraben/laravel-claude-code-setup.git
-cd laravel-claude-code-setup
-chmod +x install.sh
-./install.sh
+# Check Claude Code
+claude --version
+
+# Check Node.js
+node --version
+
+# Check npm
+npm --version
 ```
-
-## 📖 Documentation
-
-- [Installation Guide](docs/installation.md)
-- [Usage Guide](docs/usage.md)  
-- [Troubleshooting](docs/troubleshooting.md)
-
-## 🎯 Perfect For
-
-- **Laravel** full-stack developers
-- **Livewire** dynamic applications
-- **Filament** admin panels
-- **Alpine.js** frontend interactivity
-- **Tailwind CSS** utility-first styling
 
 ## 🤝 Contributing
 
-Contributions welcome! Feel free to:
-- Report bugs
-- Suggest new MCP servers
-- Improve documentation
-- Submit pull requests
+Found a bug or want to add a feature? PRs are welcome!
 
-## 📄 License
+## 📝 License
 
-MIT License - see [LICENSE](LICENSE) file.
-
-## 🙏 Credits
-
-Built for Laravel developers who love AI-assisted coding with Claude Code.
-- Laraben
+MIT License - feel free to use this in your projects!
 
 ---
 
-**⭐ Star this repo if it helped you!** | **🐛 [Report Issues](https://github.com/laraben/laravel-claude-code-setup/issues)** | **💬 [Discussions](https://github.com/laraben/laravel-claude-code-setup/discussions)**
+Made with ❤️ for the Laravel community by [@laraben](https://github.com/laraben)

@@ -3,7 +3,7 @@
 # Laravel Claude Code Setup Script
 # Automatically configures Claude Code with MCP servers for Laravel development
 # Author: Laravel Developer
-# Version: 1.5 - Multi-project support with project-specific MCP servers
+# Version: 1.6 - Fixed GitHub MCP environment variable
 
 set -e  # Exit on any error
 
@@ -549,26 +549,76 @@ configure_claude_mcp() {
     print_status "Adding GitHub MCP server for $PROJECT_NAME..."
     if [ "$GITHUB_AUTH_METHOD" = "token" ] && [ ! -z "$GITHUB_TOKEN" ]; then
         # Configure GitHub MCP with token authentication
-        # Note: GitHub MCP server gets token via environment variable, not command flags
+        # The GitHub MCP server expects GITHUB_PERSONAL_ACCESS_TOKEN environment variable
         print_status "Configuring GitHub MCP with token authentication"
         
-        # Create a project-specific wrapper script that sets the environment variable
-        GITHUB_WRAPPER="$MCP_DIR/github-wrapper-$PROJECT_ID.sh"
-        cat > "$GITHUB_WRAPPER" << WRAPPER_EOF
+        # Method 1: Try editing the Claude Code config directly (preferred)
+        CONFIG_FILE="$HOME/.config/claude-code/config.json"
+        if [ -f "$CONFIG_FILE" ]; then
+            # Create a temporary wrapper that we'll use to add the server
+            GITHUB_WRAPPER="$MCP_DIR/github-wrapper-$PROJECT_ID.sh"
+            cat > "$GITHUB_WRAPPER" << WRAPPER_EOF
 #!/bin/bash
 export GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_TOKEN"
 exec npx @modelcontextprotocol/server-github "\$@"
 WRAPPER_EOF
-        chmod +x "$GITHUB_WRAPPER"
-        
-        if claude mcp add "github-$PROJECT_ID" "$GITHUB_WRAPPER"; then
-            print_success "GitHub MCP server added: github-$PROJECT_ID (with token authentication)"
-            if [ ! -z "$GITHUB_REPO" ]; then
-                print_status "Note: You have access to all your repositories including: $GITHUB_REPO"
+            chmod +x "$GITHUB_WRAPPER"
+            
+            # Add the server using the wrapper
+            if claude mcp add "github-$PROJECT_ID" "$GITHUB_WRAPPER"; then
+                print_success "GitHub MCP server added: github-$PROJECT_ID"
+                
+                # Now try to update the config to inject the environment variable
+                print_status "Updating Claude Code config to include GitHub token..."
+                
+                # Create a backup of the config
+                cp "$CONFIG_FILE" "$CONFIG_FILE.backup"
+                
+                # Use a more robust method to update the JSON config
+                if command -v jq &> /dev/null; then
+                    # If jq is available, use it for proper JSON manipulation
+                    jq --arg token "$GITHUB_TOKEN" \
+                       --arg server "github-$PROJECT_ID" \
+                       '.mcpServers[$server].env.GITHUB_PERSONAL_ACCESS_TOKEN = $token' \
+                       "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+                    print_success "GitHub token added to Claude Code config using jq"
+                else
+                    # Fallback: Try to manually edit the config
+                    print_warning "jq not found, attempting manual config update..."
+                    print_status "You may need to manually add the GITHUB_PERSONAL_ACCESS_TOKEN to the config"
+                    print_status "Edit $CONFIG_FILE and add to the github-$PROJECT_ID server:"
+                    echo '  "env": {'
+                    echo '    "GITHUB_PERSONAL_ACCESS_TOKEN": "'$GITHUB_TOKEN'"'
+                    echo '  }'
+                fi
+                
+                if [ ! -z "$GITHUB_REPO" ]; then
+                    print_status "Repository configured: $GITHUB_REPO"
+                    print_status "You have access to all your repositories via this token"
+                fi
+            else
+                print_error "Failed to add GitHub MCP server"
+                print_status "Manual fix: claude mcp add github-$PROJECT_ID $GITHUB_WRAPPER"
             fi
         else
-            print_error "Failed to add GitHub MCP server"
-            print_status "Manual fix: claude mcp add github-$PROJECT_ID $GITHUB_WRAPPER"
+            # Fallback: Just use the wrapper without config modification
+            GITHUB_WRAPPER="$MCP_DIR/github-wrapper-$PROJECT_ID.sh"
+            cat > "$GITHUB_WRAPPER" << WRAPPER_EOF
+#!/bin/bash
+export GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_TOKEN"
+exec npx @modelcontextprotocol/server-github "\$@"
+WRAPPER_EOF
+            chmod +x "$GITHUB_WRAPPER"
+            
+            if claude mcp add "github-$PROJECT_ID" "$GITHUB_WRAPPER"; then
+                print_success "GitHub MCP server added: github-$PROJECT_ID (via wrapper)"
+                print_warning "Note: You may need to restart Claude Code for the token to take effect"
+                if [ ! -z "$GITHUB_REPO" ]; then
+                    print_status "Repository configured: $GITHUB_REPO"
+                fi
+            else
+                print_error "Failed to add GitHub MCP server"
+            fi
         fi
     elif [ "$GITHUB_AUTH_METHOD" = "ssh" ]; then
         # Configure GitHub MCP with SSH (limited functionality for private repos)
