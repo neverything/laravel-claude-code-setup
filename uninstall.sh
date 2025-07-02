@@ -60,10 +60,9 @@ if is_laravel_project; then
     echo "2) Remove ALL Laravel projects and MCP servers (complete uninstall)"
     echo "3) Cancel"
     echo ""
-    read -p "Enter choice (1, 2, or 3): " -n 1 -r
-    echo
+    read -p "Enter choice (1, 2, or 3): " choice
     
-    case $REPLY in
+    case $choice in
         1)
             UNINSTALL_SCOPE="project"
             ;;
@@ -82,10 +81,9 @@ else
     echo "1) Remove ALL Laravel projects and MCP servers (complete uninstall)"
     echo "2) Cancel"
     echo ""
-    read -p "Enter choice (1 or 2): " -n 1 -r
-    echo
+    read -p "Enter choice (1 or 2): " choice
     
-    case $REPLY in
+    case $choice in
         1)
             UNINSTALL_SCOPE="complete"
             ;;
@@ -114,9 +112,8 @@ elif [ "$UNINSTALL_SCOPE" = "complete" ]; then
     echo ""
 fi
 
-read -p "Are you sure you want to proceed? (y/N): " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+read -p "Are you sure you want to proceed? (y/N): " confirm
+if [[ ! $confirm =~ ^[Yy]$ ]]; then
     echo "Uninstallation cancelled."
     exit 0
 fi
@@ -253,13 +250,12 @@ if [ -d ".claude" ]; then
     echo ""
     if [ "$UNINSTALL_SCOPE" = "project" ]; then
         print_status "Found .claude/ directory for $PROJECT_NAME"
-        read -p "Remove project-specific .claude/ directory? (y/N): " -n 1 -r
+        read -p "Remove project-specific .claude/ directory? (y/N): " claude_confirm
     else
         print_status "Found .claude/ directory"
-        read -p "Remove .claude/ directory? (y/N): " -n 1 -r
+        read -p "Remove .claude/ directory? (y/N): " claude_confirm
     fi
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
+    if [[ $claude_confirm =~ ^[Yy]$ ]]; then
         rm -rf .claude/
         print_success "Removed .claude/ directory"
     else
