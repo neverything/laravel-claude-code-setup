@@ -3,7 +3,7 @@
 # Laravel Claude Code Setup Script
 # Automatically configures Claude Code with MCP servers for Laravel development
 # Author: Laravel Developer
-# Version: 1.6 - Fixed GitHub MCP environment variable
+# Version: 1.7 - Fixed redundant MCP servers
 
 set -e  # Exit on any error
 
@@ -723,9 +723,10 @@ PYTHON_EOF
     
     # Remove any existing project-specific servers (clean reinstall)
     print_status "Cleaning up existing project-specific MCP servers..."
+    # Only clean up filesystem and database servers for this project
     claude mcp list 2>/dev/null | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | awk '{print $1}' | xargs -I {} claude mcp remove {} 2>/dev/null || true
     
-    # Add PROJECT-SPECIFIC MCP servers
+    # Add PROJECT-SPECIFIC MCP servers (only filesystem and database)
     
     # Add Filesystem MCP server (project-specific - points to project directory)
     print_status "Adding Filesystem MCP server for $PROJECT_NAME..."
@@ -803,6 +804,8 @@ PYTHON_EOF
     
     # Show summary
     echo ""
+    print_status "MCP Server Configuration Summary:"
+    echo ""
     print_status "Global MCP servers (shared across all projects):"
     claude mcp list | grep -E "^(github|memory|context7|webfetch):" | sed 's/^/  ✅ /' || true
     echo ""
@@ -810,12 +813,12 @@ PYTHON_EOF
     claude mcp list | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | sed 's/^/  ✅ /' || true
     echo ""
     
-    print_status "💡 Tips:"
-    echo "  • Global servers (GitHub, Memory, etc.) work across all your projects"
-    echo "  • Each project has its own Filesystem and Database access"
-    echo "  • Use project names in requests: 'Read .env from $PROJECT_NAME'"
-    echo "  • Database queries: 'Show tables from $PROJECT_NAME database'"
-    echo "  • GitHub access: 'Show commits from [owner/repo]'"
+    print_status "💡 Usage Tips:"
+    echo "  • Global servers work across all your projects"
+    echo "  • Filesystem access is specific to: $PROJECT_PATH"
+    echo "  • Database access is configured for: $DB_DATABASE"
+    echo "  • Memory is shared - decisions in one project can inform others"
+    echo "  • GitHub can access any repository you have permissions for"
 }
 
 # Create project-specific Claude prompts
@@ -1208,7 +1211,7 @@ EOF
 # Main installation function
 main() {
     echo "======================================"
-    echo "Laravel Claude Code Setup Script"
+    echo "Laravel Claude Code Setup Script v1.7"
     echo "======================================"
     echo ""
     
