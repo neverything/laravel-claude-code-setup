@@ -3,7 +3,7 @@
 # Laravel Claude Code Setup Script
 # Automatically configures Claude Code with MCP servers for Laravel development
 # Author: Laravel Developer
-# Version: 1.3 - Fixed Context7 build process and database MCP configuration
+# Version: 1.4 - Enhanced GitHub token collection and authentication setup
 
 set -e  # Exit on any error
 
@@ -52,26 +52,58 @@ collect_tokens() {
     print_status "Checking GitHub authentication..."
     echo ""
     
-    # Test SSH authentication with GitHub
-    if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
-        print_success "GitHub SSH authentication detected!"
-        print_status "Using existing SSH credentials for GitHub integration"
-        GITHUB_AUTH_METHOD="ssh"
-        
-        # Optional: GitHub repository
-        if [ -t 0 ]; then
-            echo -n "Enter GitHub repository (optional, format: owner/repo): "
-            read GITHUB_REPO
-        fi
-    else
-        print_warning "GitHub SSH authentication not available"
-        print_status "Personal Access Token required for GitHub MCP integration..."
+    # Check if GITHUB_TOKEN is already set
+    if [ -n "$GITHUB_TOKEN" ]; then
+        print_success "Using GITHUB_TOKEN from environment"
         GITHUB_AUTH_METHOD="token"
-        
-        # Check if GITHUB_TOKEN is already set
-        if [ -n "$GITHUB_TOKEN" ]; then
-            print_success "Using GITHUB_TOKEN from environment"
+    else
+        # Test SSH authentication with GitHub
+        if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+            print_success "GitHub SSH authentication detected!"
+            print_status "However, for MCP integration, a Personal Access Token is recommended for private repositories."
+            
+            # Ask if user wants to use SSH or provide a token
+            if [ -t 0 ]; then
+                echo ""
+                echo "Choose GitHub authentication method:"
+                echo "1) Use SSH (works for public repos, limited for private repos in MCP)"
+                echo "2) Provide Personal Access Token (recommended for full private repo access)"
+                echo -n "Enter choice (1 or 2): "
+                read auth_choice
+                
+                if [ "$auth_choice" = "2" ]; then
+                    GITHUB_AUTH_METHOD="token"
+                    while [ -z "$GITHUB_TOKEN" ]; do
+                        echo ""
+                        print_status "To create a GitHub Personal Access Token:"
+                        echo "1. Go to GitHub.com → Settings → Developer settings → Personal access tokens → Tokens (classic)"
+                        echo "2. Click 'Generate new token (classic)'"
+                        echo "3. Select scopes: repo, read:user, user:email"
+                        echo "4. Copy the generated token"
+                        echo ""
+                        echo -n "Enter your GitHub Personal Access Token (or 'skip' to continue without): "
+                        read -s GITHUB_TOKEN
+                        echo ""
+                        
+                        if [ "$GITHUB_TOKEN" = "skip" ]; then
+                            GITHUB_TOKEN=""
+                            GITHUB_AUTH_METHOD="none"
+                            print_warning "Skipping GitHub MCP integration"
+                            break
+                        elif [ -z "$GITHUB_TOKEN" ]; then
+                            print_warning "Token is required for GitHub MCP integration!"
+                        fi
+                    done
+                else
+                    GITHUB_AUTH_METHOD="ssh"
+                fi
+            else
+                GITHUB_AUTH_METHOD="ssh"
+            fi
         else
+            print_warning "No GitHub SSH authentication detected"
+            GITHUB_AUTH_METHOD="token"
+            
             # Check if running in a pipe (non-interactive mode)
             if [ ! -t 0 ]; then
                 print_error "This script requires a GitHub token for GitHub MCP integration."
@@ -89,25 +121,71 @@ collect_tokens() {
             
             # Interactive input for direct execution
             while [ -z "$GITHUB_TOKEN" ]; do
-                echo -n "Enter your GitHub Personal Access Token (required for GitHub MCP): "
+                echo ""
+                print_status "To create a GitHub Personal Access Token:"
+                echo "1. Go to GitHub.com → Settings → Developer settings → Personal access tokens → Tokens (classic)"
+                echo "2. Click 'Generate new token (classic)'"
+                echo "3. Select scopes: repo, read:user, user:email"
+                echo "4. Copy the generated token"
+                echo ""
+                echo -n "Enter your GitHub Personal Access Token (or 'skip' to continue without): "
                 read -s GITHUB_TOKEN
                 echo ""
-                if [ -z "$GITHUB_TOKEN" ]; then
-                    print_warning "GitHub token is required for GitHub integration!"
+                
+                if [ "$GITHUB_TOKEN" = "skip" ]; then
+                    GITHUB_TOKEN=""
+                    GITHUB_AUTH_METHOD="none"
+                    print_warning "Skipping GitHub MCP integration"
+                    break
+                elif [ -z "$GITHUB_TOKEN" ]; then
+                    print_warning "Token is required for GitHub MCP integration!"
                 fi
             done
         fi
+    fi
+    
+    # Get GitHub repository information if we have authentication
+    if [ "$GITHUB_AUTH_METHOD" != "none" ]; then
+        # Try to detect current repository from git remote
+        if command -v git &> /dev/null && [ -d ".git" ]; then
+            # Extract owner/repo from git remote URL
+            REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+            if [ ! -z "$REMOTE_URL" ]; then
+                # Parse GitHub repository from remote URL
+                if echo "$REMOTE_URL" | grep -q "github.com"; then
+                    # Extract owner/repo from various URL formats
+                    DETECTED_REPO=$(echo "$REMOTE_URL" | sed -E 's|.*github\.com[:/]([^/]+/[^/]+)(\.git)?.*|\1|' | sed 's|\.git$||')
+                    if [ ! -z "$DETECTED_REPO" ]; then
+                        print_success "Detected GitHub repository: $DETECTED_REPO"
+                        GITHUB_REPO="$DETECTED_REPO"
+                    fi
+                fi
+            fi
+        fi
         
-        # Optional: GitHub repository
-        if [ -z "$GITHUB_REPO" ]; then
-            if [ -t 0 ]; then
+        # Ask for repository if not detected or if user wants to specify different one
+        if [ -t 0 ]; then
+            if [ ! -z "$GITHUB_REPO" ]; then
+                echo -n "Use detected repository '$GITHUB_REPO'? (y/n, or enter different owner/repo): "
+                read repo_choice
+                if [ "$repo_choice" = "n" ] || [ "$repo_choice" = "no" ]; then
+                    GITHUB_REPO=""
+                elif [ ! -z "$repo_choice" ] && [ "$repo_choice" != "y" ] && [ "$repo_choice" != "yes" ]; then
+                    GITHUB_REPO="$repo_choice"
+                fi
+            else
                 echo -n "Enter GitHub repository (optional, format: owner/repo): "
                 read GITHUB_REPO
             fi
         fi
     fi
     
-    print_success "GitHub authentication configured!"
+    if [ "$GITHUB_AUTH_METHOD" != "none" ]; then
+        print_success "GitHub authentication configured!"
+        if [ ! -z "$GITHUB_REPO" ]; then
+            print_status "Repository: $GITHUB_REPO"
+        fi
+    fi
     echo ""
 }
 
@@ -461,31 +539,48 @@ configure_claude_mcp() {
     fi
     
     print_status "Adding GitHub MCP server..."
-    if [ "$GITHUB_AUTH_METHOD" = "ssh" ]; then
-        if [ ! -z "$GITHUB_REPO" ]; then
-            if claude mcp add github npx @modelcontextprotocol/server-github --repository "$GITHUB_REPO"; then
-                print_success "GitHub MCP server added with repository: $GITHUB_REPO"
-            else
-                print_warning "Failed to add GitHub MCP server with repository"
+    if [ "$GITHUB_AUTH_METHOD" = "token" ] && [ ! -z "$GITHUB_TOKEN" ]; then
+        # Configure GitHub MCP with token authentication
+        # Note: GitHub MCP server gets token via environment variable, not command flags
+        print_status "Configuring GitHub MCP with token authentication"
+        
+        # Create a wrapper script that sets the environment variable
+        GITHUB_WRAPPER="$MCP_DIR/github-wrapper.sh"
+        cat > "$GITHUB_WRAPPER" << WRAPPER_EOF
+#!/bin/bash
+export GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_TOKEN"
+exec npx @modelcontextprotocol/server-github "\$@"
+WRAPPER_EOF
+        chmod +x "$GITHUB_WRAPPER"
+        
+        if claude mcp add github "$GITHUB_WRAPPER"; then
+            print_success "GitHub MCP server added with token authentication (all repositories)"
+            if [ ! -z "$GITHUB_REPO" ]; then
+                print_status "Note: Repository-specific flags not supported, but you have access to all your repositories including: $GITHUB_REPO"
             fi
         else
-            if claude mcp add github npx @modelcontextprotocol/server-github; then
-                print_success "GitHub MCP server added"
+            print_error "Failed to add GitHub MCP server with wrapper script"
+            print_status "Falling back to direct method..."
+            # Fallback: try direct method
+            if GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_TOKEN" claude mcp add github npx @modelcontextprotocol/server-github; then
+                print_success "GitHub MCP server added with token authentication (fallback method)"
             else
-                print_warning "Failed to add GitHub MCP server"
+                print_error "Failed to add GitHub MCP server"
+                print_status "Manual fix needed - see documentation for GitHub MCP setup"
             fi
+        fi
+    elif [ "$GITHUB_AUTH_METHOD" = "ssh" ]; then
+        # Configure GitHub MCP with SSH (limited functionality for private repos)
+        print_warning "SSH authentication has limited access to private repositories via MCP"
+        if claude mcp add github npx @modelcontextprotocol/server-github; then
+            print_success "GitHub MCP server added with SSH authentication"
+            print_warning "Note: SSH authentication may not work for private repository data via MCP"
+            print_status "Consider using a Personal Access Token for full private repository access"
+        else
+            print_warning "Failed to add GitHub MCP server"
         fi
     else
-        # For token-based authentication, we need to set environment variable
-        if [ ! -z "$GITHUB_TOKEN" ]; then
-            if GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_TOKEN" claude mcp add github npx @modelcontextprotocol/server-github; then
-                print_success "GitHub MCP server added with token authentication"
-            else
-                print_warning "Failed to add GitHub MCP server with token"
-            fi
-        else
-            print_warning "GitHub token not available, skipping GitHub MCP server"
-        fi
+        print_status "Skipping GitHub MCP server (no authentication configured)"
     fi
     
     # Add Context7 if build exists
