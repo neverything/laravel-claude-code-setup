@@ -30,6 +30,12 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Fix for pipe execution - redirect stdin to terminal
+if [ ! -t 0 ]; then
+    # We're in a pipe, read from /dev/tty instead
+    exec < /dev/tty
+fi
+
 # Get current project info
 get_project_info() {
     PROJECT_PATH="$PWD"
