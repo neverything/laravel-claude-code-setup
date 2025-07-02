@@ -326,32 +326,6 @@ install_memory() {
     print_success "Memory MCP Server installed!"
 }
 
-# Install Laravel Documentation MCP Server
-install_laravel_docs() {
-    print_status "Installing Laravel Documentation MCP Server..."
-    
-    cd "$MCP_DIR"
-    
-    if [ ! -d "laravel-docs" ]; then
-        git clone https://github.com/brianirish/laravel-docs-mcp.git laravel-docs
-    fi
-    
-    cd laravel-docs
-    
-    # Create virtual environment and install dependencies
-    if command -v uv &> /dev/null; then
-        uv venv
-        source .venv/bin/activate
-        uv pip install .
-    else
-        python3 -m venv .venv
-        source .venv/bin/activate
-        pip install .
-    fi
-    
-    print_success "Laravel Documentation MCP Server installed!"
-}
-
 # Install Laravel DebugBar MCP Server (optional, requires DebugBar package)
 install_debugbar_mcp() {
     print_status "Installing Laravel DebugBar MCP Server (optional)..."
@@ -472,11 +446,6 @@ cat > "$HOME/.config/claude-code/claude_desktop_config.json" << EOF
       "env": {
         "MEMORY_STORAGE_PATH": "$PROJECT_PATH/.claude/memory"
       }
-    },
-    "laravel_docs": {
-      "command": "python",
-      "args": ["$MCP_DIR/laravel-docs/.venv/bin/python", "$MCP_DIR/laravel-docs/laravel_docs_server.py"],
-      "env": {}
     }
   },
   "globalShortcut": "CommandOrControl+Shift+Space"
@@ -790,11 +759,7 @@ This Laravel project has been configured with Claude Code and the following MCP 
 - **Purpose**: Persistent memory across sessions
 - **Features**: Remember project details, coding patterns, preferences, decisions
 
-### 8. Laravel Documentation
-- **Purpose**: Access Laravel documentation and package recommendations
-- **Features**: Documentation search, package suggestions, version-specific docs
-
-### 9. Laravel DebugBar (Optional)
+### 8. Laravel DebugBar (Optional)
 - **Purpose**: Real-time debug information access
 - **Features**: Query analysis, performance metrics, request debugging
 - **Note**: Only installed if Laravel DebugBar package is detected
@@ -850,7 +815,6 @@ main() {
     install_web_fetch
     install_github
     install_memory
-    install_laravel_docs
     install_debugbar_mcp
     
     # Generate configuration
