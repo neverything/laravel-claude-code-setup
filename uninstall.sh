@@ -30,20 +30,6 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Fix for pipe execution - redirect stdin to terminal
-# Check if we're in a pipe and /dev/tty is available
-if [ ! -t 0 ] && [ -e /dev/tty ]; then
-    # We're in a pipe, read from /dev/tty instead
-    exec 0</dev/tty
-elif [ ! -t 0 ]; then
-    # We're in a pipe but /dev/tty might not be available
-    print_error "This script requires interactive input. Please run it directly:"
-    echo "curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/uninstall.sh -o uninstall.sh"
-    echo "chmod +x uninstall.sh"
-    echo "./uninstall.sh"
-    exit 1
-fi
-
 # Get current project info
 get_project_info() {
     PROJECT_PATH="$PWD"
@@ -75,7 +61,7 @@ if is_laravel_project; then
     echo "2) Remove ALL MCP servers (complete uninstall)"
     echo "3) Cancel"
     echo ""
-    read -p "Enter choice (1, 2, or 3): " choice
+    read -p "Enter choice (1, 2, or 3): " choice < /dev/tty
     
     case $choice in
         1)
@@ -96,7 +82,7 @@ else
     echo "1) Remove ALL MCP servers (complete uninstall)"
     echo "2) Cancel"
     echo ""
-    read -p "Enter choice (1 or 2): " choice
+    read -p "Enter choice (1 or 2): " choice < /dev/tty
     
     case $choice in
         1)
@@ -130,7 +116,7 @@ elif [ "$UNINSTALL_SCOPE" = "complete" ]; then
     echo "⚠️  WARNING: This will affect ALL your Laravel projects!"
 fi
 
-read -p "Are you sure you want to proceed? (y/N): " confirm
+read -p "Are you sure you want to proceed? (y/N): " confirm < /dev/tty
 if [[ ! $confirm =~ ^[Yy]$ ]]; then
     echo "Uninstallation cancelled."
     exit 0
@@ -277,10 +263,10 @@ if [ -d ".claude" ]; then
     echo ""
     if [ "$UNINSTALL_SCOPE" = "project" ]; then
         print_status "Found .claude/ directory for $PROJECT_NAME"
-        read -p "Remove project-specific .claude/ directory? (y/N): " claude_confirm
+        read -p "Remove project-specific .claude/ directory? (y/N): " claude_confirm < /dev/tty
     else
         print_status "Found .claude/ directory"
-        read -p "Remove .claude/ directory? (y/N): " claude_confirm
+        read -p "Remove .claude/ directory? (y/N): " claude_confirm < /dev/tty
     fi
     if [[ $claude_confirm =~ ^[Yy]$ ]]; then
         rm -rf .claude/
