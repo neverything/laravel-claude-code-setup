@@ -523,13 +523,211 @@ configure_claude_mcp() {
         return 1
     fi
     
-    # Remove any existing servers for this project (clean reinstall)
-    print_status "Cleaning up existing MCP servers for this project..."
-    claude mcp list 2>/dev/null | grep -E "^(filesystem|memory|github|webfetch|database|context7)-$PROJECT_ID" | awk '{print $1}' | xargs -I {} claude mcp remove {} 2>/dev/null || true
+    print_status "Setting up global MCP servers (if not already configured)..."
     
-    print_status "Adding project-specific MCP servers..."
+    # Setup GLOBAL MCP servers (shared across all projects)
+    # These only need to be set up once and can be used by all projects
     
-    # Add Filesystem MCP server (project-specific)
+    # Check and add global GitHub MCP server
+    if ! claude mcp list 2>/dev/null | grep -q "^github[[:space:]]"; then
+        print_status "Adding global GitHub MCP server..."
+        if [ "$GITHUB_AUTH_METHOD" = "token" ] && [ ! -z "$GITHUB_TOKEN" ]; then
+            # Add GitHub MCP server
+            if claude mcp add "github" npx @modelcontextprotocol/server-github; then
+                print_success "Global GitHub MCP server added"
+                
+                # Now update the config to include the token
+                print_status "Configuring GitHub token in Claude config..."
+                
+                CONFIG_FILE="$HOME/.claude.json"
+                if [ -f "$CONFIG_FILE" ]; then
+                    # Create a backup
+                    cp "$CONFIG_FILE" "$CONFIG_FILE.backup"
+                    
+                    # Use jq if available for clean JSON manipulation
+                    if command -v jq &> /dev/null; then
+                        # Update the github server to include the env with token
+                        jq --arg token "$GITHUB_TOKEN" \
+                           'if .mcpServers.github then 
+                              .mcpServers.github.env.GITHUB_PERSONAL_ACCESS_TOKEN = $token 
+                            else 
+                              . 
+                            end' \
+                           "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+                        print_success "GitHub token automatically configured!"
+                        print_status "Private repository access is now enabled"
+                    else
+                        # Fallback: Use sed/awk for JSON manipulation
+                        print_status "Attempting to configure GitHub token without jq..."
+                        
+                        # Create a Python script to update JSON (more reliable than sed for JSON)
+                        cat > /tmp/update_github_token.py << PYTHON_EOF
+#!/usr/bin/env python3
+import json
+import sys
+
+try:
+    with open('$CONFIG_FILE', 'r') as f:
+        config = json.load(f)
+    
+    if 'mcpServers' in config and 'github' in config['mcpServers']:
+        if 'env' not in config['mcpServers']['github']:
+            config['mcpServers']['github']['env'] = {}
+        config['mcpServers']['github']['env']['GITHUB_PERSONAL_ACCESS_TOKEN'] = '$GITHUB_TOKEN'
+        
+        with open('$CONFIG_FILE', 'w') as f:
+            json.dump(config, f, indent=2)
+        print("SUCCESS")
+    else:
+        print("GITHUB_NOT_FOUND")
+except Exception as e:
+    print(f"ERROR: {e}")
+PYTHON_EOF
+                        
+                        # Try Python first (usually available on most systems)
+                        if command -v python3 &> /dev/null; then
+                            RESULT=$(python3 /tmp/update_github_token.py 2>&1)
+                            rm -f /tmp/update_github_token.py
+                            
+                            if [ "$RESULT" = "SUCCESS" ]; then
+                                print_success "GitHub token automatically configured using Python!"
+                                print_status "Private repository access is now enabled"
+                            else
+                                print_warning "Failed to automatically configure GitHub token"
+                                print_status "Manual configuration required - see instructions below"
+                                MANUAL_CONFIG_NEEDED=true
+                            fi
+                        else
+                            # Last resort: try with sed (less reliable for JSON)
+                            print_warning "No JSON tools available, attempting basic text manipulation..."
+                            
+                            # This is fragile but might work for simple cases
+                            if grep -q '"github".*{' "$CONFIG_FILE"; then
+                                # Try to add env section after the github entry
+                                sed -i.tmp '/"github".*{/,/}/ s/\("args": \[[^]]*\]\)/\1,\n      "env": {\n        "GITHUB_PERSONAL_ACCESS_TOKEN": "'"$GITHUB_TOKEN"'"\n      }/' "$CONFIG_FILE" 2>/dev/null || true
+                                
+                                # Check if it worked
+                                if grep -q "GITHUB_PERSONAL_ACCESS_TOKEN.*$GITHUB_TOKEN" "$CONFIG_FILE"; then
+                                    print_success "GitHub token configured (basic method)"
+                                    print_warning "Please verify the configuration is correct"
+                                else
+                                    print_warning "Automatic configuration failed"
+                                    MANUAL_CONFIG_NEEDED=true
+                                fi
+                            else
+                                MANUAL_CONFIG_NEEDED=true
+                            fi
+                        fi
+                    fi
+                else
+                    print_warning "Claude config file not found"
+                    MANUAL_CONFIG_NEEDED=true
+                fi
+                
+                # If automatic config failed, show manual instructions
+                if [ "$MANUAL_CONFIG_NEEDED" = "true" ]; then
+                    echo ""
+                    print_warning "⚠️  Manual configuration required for GitHub private repo access"
+                    echo ""
+                    echo "Please edit ~/.claude.json and add your token to the 'github' server:"
+                    echo ""
+                    echo '  "github": {'
+                    echo '    "command": "npx",'
+                    echo '    "args": ["@modelcontextprotocol/server-github"],'
+                    echo '    "env": {'
+                    echo '      "GITHUB_PERSONAL_ACCESS_TOKEN": "'$GITHUB_TOKEN'"'
+                    echo '    }'
+                    echo '  }'
+                    echo ""
+                fi
+            else
+                print_error "Failed to add GitHub MCP server"
+            fi
+        elif [ "$GITHUB_AUTH_METHOD" = "ssh" ]; then
+            if claude mcp add "github" npx @modelcontextprotocol/server-github; then
+                print_success "Global GitHub MCP server added (SSH mode - limited private repo access)"
+            fi
+        fi
+    else
+        print_success "Global GitHub MCP server already configured"
+        
+        # Check if token is configured for existing server
+        if [ "$GITHUB_AUTH_METHOD" = "token" ] && [ ! -z "$GITHUB_TOKEN" ]; then
+            CONFIG_FILE="$HOME/.claude.json"
+            if [ -f "$CONFIG_FILE" ]; then
+                if ! grep -q "GITHUB_PERSONAL_ACCESS_TOKEN" "$CONFIG_FILE"; then
+                    print_warning "GitHub server exists but token not configured"
+                    print_status "Attempting to add token to existing configuration..."
+                    
+                    # Use the same token configuration logic as above
+                    cp "$CONFIG_FILE" "$CONFIG_FILE.backup"
+                    
+                    if command -v jq &> /dev/null; then
+                        jq --arg token "$GITHUB_TOKEN" \
+                           'if .mcpServers.github then 
+                              .mcpServers.github.env.GITHUB_PERSONAL_ACCESS_TOKEN = $token 
+                            else 
+                              . 
+                            end' \
+                           "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+                        print_success "GitHub token added to existing server configuration!"
+                    else
+                        print_warning "Please manually add your GitHub token to ~/.claude.json"
+                    fi
+                fi
+            fi
+        fi
+    fi
+    
+    # Check and add global Memory MCP server
+    if ! claude mcp list 2>/dev/null | grep -q "^memory[[:space:]]"; then
+        print_status "Adding global Memory MCP server..."
+        if claude mcp add "memory" npx @modelcontextprotocol/server-memory; then
+            print_success "Global Memory MCP server added"
+        else
+            print_warning "Failed to add global Memory MCP server"
+        fi
+    else
+        print_success "Global Memory MCP server already configured"
+    fi
+    
+    # Check and add global Context7 MCP server
+    if [ -f "$MCP_DIR/context7/dist/index.js" ]; then
+        if ! claude mcp list 2>/dev/null | grep -q "^context7[[:space:]]"; then
+            print_status "Adding global Context7 MCP server..."
+            if claude mcp add "context7" node "$MCP_DIR/context7/dist/index.js"; then
+                print_success "Global Context7 MCP server added"
+            else
+                print_warning "Failed to add global Context7 MCP server"
+            fi
+        else
+            print_success "Global Context7 MCP server already configured"
+        fi
+    fi
+    
+    # Check and add global Web Fetch MCP server
+    if [ -f "$MCP_DIR/fetch-mcp/dist/index.js" ]; then
+        if ! claude mcp list 2>/dev/null | grep -q "^webfetch[[:space:]]"; then
+            print_status "Adding global Web Fetch MCP server..."
+            if claude mcp add "webfetch" node "$MCP_DIR/fetch-mcp/dist/index.js"; then
+                print_success "Global Web Fetch MCP server added"
+            else
+                print_warning "Failed to add global Web Fetch MCP server"
+            fi
+        else
+            print_success "Global Web Fetch MCP server already configured"
+        fi
+    fi
+    
+    print_status "Setting up project-specific MCP servers..."
+    
+    # Remove any existing project-specific servers (clean reinstall)
+    print_status "Cleaning up existing project-specific MCP servers..."
+    claude mcp list 2>/dev/null | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | awk '{print $1}' | xargs -I {} claude mcp remove {} 2>/dev/null || true
+    
+    # Add PROJECT-SPECIFIC MCP servers
+    
+    # Add Filesystem MCP server (project-specific - points to project directory)
     print_status "Adding Filesystem MCP server for $PROJECT_NAME..."
     if claude mcp add "filesystem-$PROJECT_ID" npx @modelcontextprotocol/server-filesystem "$PROJECT_PATH"; then
         print_success "Filesystem MCP server added: filesystem-$PROJECT_ID"
@@ -537,130 +735,7 @@ configure_claude_mcp() {
         print_warning "Failed to add Filesystem MCP server"
     fi
     
-    # Add Memory MCP server (project-specific)
-    print_status "Adding Memory MCP server for $PROJECT_NAME..."
-    if claude mcp add "memory-$PROJECT_ID" npx @modelcontextprotocol/server-memory; then
-        print_success "Memory MCP server added: memory-$PROJECT_ID"
-    else
-        print_warning "Failed to add Memory MCP server"
-    fi
-    
-    # Add GitHub MCP server (project-specific)
-    print_status "Adding GitHub MCP server for $PROJECT_NAME..."
-    if [ "$GITHUB_AUTH_METHOD" = "token" ] && [ ! -z "$GITHUB_TOKEN" ]; then
-        # Configure GitHub MCP with token authentication
-        # The GitHub MCP server expects GITHUB_PERSONAL_ACCESS_TOKEN environment variable
-        print_status "Configuring GitHub MCP with token authentication"
-        
-        # Method 1: Try editing the Claude Code config directly (preferred)
-        CONFIG_FILE="$HOME/.config/claude-code/config.json"
-        if [ -f "$CONFIG_FILE" ]; then
-            # Create a temporary wrapper that we'll use to add the server
-            GITHUB_WRAPPER="$MCP_DIR/github-wrapper-$PROJECT_ID.sh"
-            cat > "$GITHUB_WRAPPER" << WRAPPER_EOF
-#!/bin/bash
-export GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_TOKEN"
-exec npx @modelcontextprotocol/server-github "\$@"
-WRAPPER_EOF
-            chmod +x "$GITHUB_WRAPPER"
-            
-            # Add the server using the wrapper
-            if claude mcp add "github-$PROJECT_ID" "$GITHUB_WRAPPER"; then
-                print_success "GitHub MCP server added: github-$PROJECT_ID"
-                
-                # Now try to update the config to inject the environment variable
-                print_status "Updating Claude Code config to include GitHub token..."
-                
-                # Create a backup of the config
-                cp "$CONFIG_FILE" "$CONFIG_FILE.backup"
-                
-                # Use a more robust method to update the JSON config
-                if command -v jq &> /dev/null; then
-                    # If jq is available, use it for proper JSON manipulation
-                    jq --arg token "$GITHUB_TOKEN" \
-                       --arg server "github-$PROJECT_ID" \
-                       '.mcpServers[$server].env.GITHUB_PERSONAL_ACCESS_TOKEN = $token' \
-                       "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
-                    print_success "GitHub token added to Claude Code config using jq"
-                else
-                    # Fallback: Try to manually edit the config
-                    print_warning "jq not found, attempting manual config update..."
-                    print_status "You may need to manually add the GITHUB_PERSONAL_ACCESS_TOKEN to the config"
-                    print_status "Edit $CONFIG_FILE and add to the github-$PROJECT_ID server:"
-                    echo '  "env": {'
-                    echo '    "GITHUB_PERSONAL_ACCESS_TOKEN": "'$GITHUB_TOKEN'"'
-                    echo '  }'
-                fi
-                
-                if [ ! -z "$GITHUB_REPO" ]; then
-                    print_status "Repository configured: $GITHUB_REPO"
-                    print_status "You have access to all your repositories via this token"
-                fi
-            else
-                print_error "Failed to add GitHub MCP server"
-                print_status "Manual fix: claude mcp add github-$PROJECT_ID $GITHUB_WRAPPER"
-            fi
-        else
-            # Fallback: Just use the wrapper without config modification
-            GITHUB_WRAPPER="$MCP_DIR/github-wrapper-$PROJECT_ID.sh"
-            cat > "$GITHUB_WRAPPER" << WRAPPER_EOF
-#!/bin/bash
-export GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_TOKEN"
-exec npx @modelcontextprotocol/server-github "\$@"
-WRAPPER_EOF
-            chmod +x "$GITHUB_WRAPPER"
-            
-            if claude mcp add "github-$PROJECT_ID" "$GITHUB_WRAPPER"; then
-                print_success "GitHub MCP server added: github-$PROJECT_ID (via wrapper)"
-                print_warning "Note: You may need to restart Claude Code for the token to take effect"
-                if [ ! -z "$GITHUB_REPO" ]; then
-                    print_status "Repository configured: $GITHUB_REPO"
-                fi
-            else
-                print_error "Failed to add GitHub MCP server"
-            fi
-        fi
-    elif [ "$GITHUB_AUTH_METHOD" = "ssh" ]; then
-        # Configure GitHub MCP with SSH (limited functionality for private repos)
-        print_warning "SSH authentication has limited access to private repositories via MCP"
-        if claude mcp add "github-$PROJECT_ID" npx @modelcontextprotocol/server-github; then
-            print_success "GitHub MCP server added: github-$PROJECT_ID (SSH authentication)"
-            print_warning "Note: SSH authentication may not work for private repository data via MCP"
-            print_status "Consider using a Personal Access Token for full private repository access"
-        else
-            print_warning "Failed to add GitHub MCP server"
-        fi
-    else
-        print_status "Skipping GitHub MCP server (no authentication configured)"
-    fi
-    
-    # Add Context7 if build exists (project-specific)
-    if [ -f "$MCP_DIR/context7/dist/index.js" ]; then
-        print_status "Adding Context7 MCP server for $PROJECT_NAME..."
-        if claude mcp add "context7-$PROJECT_ID" node "$MCP_DIR/context7/dist/index.js"; then
-            print_success "Context7 MCP server added: context7-$PROJECT_ID"
-        else
-            print_warning "Failed to add Context7 MCP server"
-        fi
-    else
-        print_warning "Context7 build not found, skipping Context7 MCP server"
-        print_status "Run 'cd $MCP_DIR/context7 && npm run build' to build it manually"
-        print_status "Note: Context7 builds to dist/index.js not build/index.js"
-    fi
-    
-    # Add Web Fetch if build exists (project-specific)
-    if [ -f "$MCP_DIR/fetch-mcp/dist/index.js" ]; then
-        print_status "Adding Web Fetch MCP server for $PROJECT_NAME..."
-        if claude mcp add "webfetch-$PROJECT_ID" node "$MCP_DIR/fetch-mcp/dist/index.js"; then
-            print_success "Web Fetch MCP server added: webfetch-$PROJECT_ID"
-        else
-            print_warning "Failed to add Web Fetch MCP server"
-        fi
-    else
-        print_warning "Web Fetch build not found, skipping Web Fetch MCP server"
-    fi
-    
-    # Add Database if binary exists and database is configured (project-specific)
+    # Add Database MCP server (project-specific - uses project's database config)
     if [ -f "$MCP_DIR/db-mcp-server/config.json" ] && [ ! -z "$DB_DATABASE" ]; then
         # Create project-specific database config
         PROJECT_DB_CONFIG="$MCP_DIR/db-mcp-server/config-$PROJECT_ID.json"
@@ -726,16 +801,21 @@ WRAPPER_EOF
     
     print_success "Claude Code MCP configuration completed!"
     
-    # Show project-specific servers
+    # Show summary
     echo ""
-    print_status "Project-specific MCP servers created:"
-    claude mcp list | grep -E "^(filesystem|memory|github|webfetch|database|context7|debugbar)-$PROJECT_ID" | sed 's/^/  ✅ /' || true
+    print_status "Global MCP servers (shared across all projects):"
+    claude mcp list | grep -E "^(github|memory|context7|webfetch)[[:space:]]" | sed 's/^/  ✅ /' || true
     echo ""
-    print_status "💡 Tips for using multiple projects:"
-    echo "  • All your projects' MCP servers are available simultaneously"
+    print_status "Project-specific MCP servers for $PROJECT_NAME:"
+    claude mcp list | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | sed 's/^/  ✅ /' || true
+    echo ""
+    
+    print_status "💡 Tips:"
+    echo "  • Global servers (GitHub, Memory, etc.) work across all your projects"
+    echo "  • Each project has its own Filesystem and Database access"
     echo "  • Use project names in requests: 'Read .env from $PROJECT_NAME'"
-    echo "  • Ask: 'List all my Laravel projects' to see available projects"
     echo "  • Database queries: 'Show tables from $PROJECT_NAME database'"
+    echo "  • GitHub access: 'Show commits from [owner/repo]'"
 }
 
 # Create project-specific Claude prompts
@@ -1077,35 +1157,16 @@ This Laravel project has been configured with Claude Code and the following MCP 
 
 ## Available MCP Servers
 
-### 1. Context7
-- **Purpose**: Access latest documentation (Laravel + all frameworks)
-- **Features**: Real-time doc lookup, API reference, always up-to-date
+### Global Servers (shared across all projects)
+1. **GitHub** - Repository access and management
+2. **Memory** - Shared knowledge base across projects
+3. **Context7** - Latest documentation access
+4. **Web Fetch** - External API and resource access
 
-### 2. Filesystem
-- **Purpose**: Read and edit project files
-- **Features**: File operations, code analysis
-
-### 3. Database
-- **Purpose**: Database operations
-- **Connection**: $DB_CONNECTION database
-- **Features**: Query execution, schema inspection
-
-### 4. Web Fetch
-- **Purpose**: Fetch internet resources
-- **Features**: API calls, web scraping, documentation lookup
-
-### 5. GitHub Integration
-- **Purpose**: GitHub operations
-- **Features**: Repository management, issue tracking, PR reviews
-
-### 6. Memory
-- **Purpose**: Persistent memory across sessions
-- **Features**: Remember project details, coding patterns, preferences, decisions
-
-### 7. Laravel DebugBar (Optional)
-- **Purpose**: Real-time debug information access
-- **Features**: Query analysis, performance metrics, request debugging
-- **Note**: Only installed if Laravel DebugBar package is detected
+### Project-Specific Servers
+1. **Filesystem** - Access to this project's files
+2. **Database** - Direct database access for this project
+3. **Laravel DebugBar** (if installed) - Debug information
 
 ## Usage
 1. Open Claude Code in this project directory
@@ -1123,12 +1184,17 @@ This Laravel project has been configured with Claude Code and the following MCP 
 ## Getting Started
 Run `source .claude/shortcuts.sh` to load helpful aliases.
 
+## Tips
+- Global servers work across all your Laravel projects
+- Use project names when referencing files: "Read .env from $PROJECT_NAME"
+- GitHub access works for all your repositories
+- Memory is shared, so decisions in one project can inform others
+
 Happy coding! 🚀
 EOF
 
     # Replace variables in the file
     sed -i '' "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/README.md" 2>/dev/null || sed -i "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/README.md"
-    sed -i '' "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/README.md" 2>/dev/null || sed -i "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/README.md"
 
     # Verify the file was created
     if [ -f ".claude/README.md" ]; then
@@ -1243,7 +1309,7 @@ main() {
     claude mcp list | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | sed 's/^/    ✅ /' || true
     echo ""
     print_status "Next steps:"
-    echo "1. If you see the GitHub warning above, manually add your token to ~/.claude.json"
+    echo "1. Restart Claude Code to ensure all servers are loaded"
     echo "2. Load helpful aliases: source .claude/shortcuts.sh"
     echo "3. Test MCP servers with: 'Can you list available MCP servers and read my .env file?'"
     echo "4. Try: 'Show me the project structure' or 'What's in my database?'"
