@@ -47,26 +47,67 @@ check_laravel_project() {
     print_success "Laravel project detected!"
 }
 
-# Collect required tokens and keys
+# Check GitHub authentication and collect tokens if needed
 collect_tokens() {
-    print_status "Collecting required tokens and API keys..."
+    print_status "Checking GitHub authentication..."
     echo ""
     
-    # GitHub Token
-    while [ -z "$GITHUB_TOKEN" ]; do
-        echo -n "Enter your GitHub Personal Access Token (required for GitHub MCP): "
-        read -s GITHUB_TOKEN
-        echo ""
-        if [ -z "$GITHUB_TOKEN" ]; then
-            print_warning "GitHub token is required for GitHub integration!"
+    # Test SSH authentication with GitHub
+    if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+        print_success "GitHub SSH authentication detected!"
+        print_status "Using existing SSH credentials for GitHub integration"
+        GITHUB_AUTH_METHOD="ssh"
+        
+        # Optional: GitHub repository
+        if [ -t 0 ]; then
+            echo -n "Enter GitHub repository (optional, format: owner/repo): "
+            read GITHUB_REPO
         fi
-    done
+    else
+        print_warning "GitHub SSH authentication not available"
+        print_status "Personal Access Token required for GitHub MCP integration..."
+        GITHUB_AUTH_METHOD="token"
+        
+        # Check if GITHUB_TOKEN is already set
+        if [ -n "$GITHUB_TOKEN" ]; then
+            print_success "Using GITHUB_TOKEN from environment"
+        else
+            # Check if running in a pipe (non-interactive mode)
+            if [ ! -t 0 ]; then
+                print_error "This script requires a GitHub token for GitHub MCP integration."
+                print_error "Please set the GITHUB_TOKEN environment variable and try again:"
+                echo ""
+                echo "export GITHUB_TOKEN=your_token_here"
+                echo "curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh | bash"
+                echo ""
+                print_status "Or download and run the script directly for interactive setup:"
+                echo "curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/scripts/setup-claude-laravel.sh -o setup.sh"
+                echo "chmod +x setup.sh && ./setup.sh"
+                echo ""
+                exit 1
+            fi
+            
+            # Interactive input for direct execution
+            while [ -z "$GITHUB_TOKEN" ]; do
+                echo -n "Enter your GitHub Personal Access Token (required for GitHub MCP): "
+                read -s GITHUB_TOKEN
+                echo ""
+                if [ -z "$GITHUB_TOKEN" ]; then
+                    print_warning "GitHub token is required for GitHub integration!"
+                fi
+            done
+        fi
+        
+        # Optional: GitHub repository
+        if [ -z "$GITHUB_REPO" ]; then
+            if [ -t 0 ]; then
+                echo -n "Enter GitHub repository (optional, format: owner/repo): "
+                read GITHUB_REPO
+            fi
+        fi
+    fi
     
-    # Optional: GitHub repository (if they want to specify a specific repo)
-    echo -n "Enter GitHub repository (optional, format: owner/repo): "
-    read GITHUB_REPO
-    
-    print_success "Tokens collected!"
+    print_success "GitHub authentication configured!"
     echo ""
 }
 
