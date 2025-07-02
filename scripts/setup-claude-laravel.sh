@@ -62,43 +62,37 @@ collect_tokens() {
             print_success "GitHub SSH authentication detected!"
             print_status "However, for MCP integration, a Personal Access Token is recommended for private repositories."
             
-            # Ask if user wants to use SSH or provide a token
-            if [ -t 0 ]; then
-                echo ""
-                echo "Choose GitHub authentication method:"
-                echo "1) Use SSH (works for public repos, limited for private repos in MCP)"
-                echo "2) Provide Personal Access Token (recommended for full private repo access)"
-                echo -n "Enter choice (1 or 2): "
-                read auth_choice
-                
-                if [ "$auth_choice" = "2" ]; then
-                    GITHUB_AUTH_METHOD="token"
-                    while [ -z "$GITHUB_TOKEN" ]; do
-                        echo ""
-                        print_status "To create a GitHub Personal Access Token:"
-                        echo "1. Go to GitHub.com → Settings → Developer settings → Personal access tokens → Tokens (classic)"
-                        echo "2. Click 'Generate new token (classic)'"
-                        echo "3. Select scopes: repo, read:user, user:email"
-                        echo "4. Copy the generated token"
-                        echo ""
-                        echo -n "Enter your GitHub Personal Access Token (or 'skip' to continue without): "
-                        read -s GITHUB_TOKEN
-                        echo ""
-                        
-                        if [ "$GITHUB_TOKEN" = "skip" ]; then
-                            GITHUB_TOKEN=""
-                            GITHUB_AUTH_METHOD="none"
-                            print_warning "Skipping GitHub MCP integration"
-                            break
-                        elif [ -z "$GITHUB_TOKEN" ]; then
-                            print_warning "Token is required for GitHub MCP integration!"
-                        fi
-                    done
-                else
-                    GITHUB_AUTH_METHOD="ssh"
-                fi
+            # Always ask for choice, even with SSH available
+            echo ""
+            echo "Choose GitHub authentication method:"
+            echo "1) Use SSH (works for public repos, limited for private repos in MCP)"
+            echo "2) Provide Personal Access Token (recommended for full private repo access)"
+            read -p "Enter choice (1 or 2): " auth_choice
+            
+            if [ "$auth_choice" = "2" ]; then
+                GITHUB_AUTH_METHOD="token"
+                while [ -z "$GITHUB_TOKEN" ]; do
+                    echo ""
+                    print_status "To create a GitHub Personal Access Token:"
+                    echo "1. Go to GitHub.com → Settings → Developer settings → Personal access tokens → Tokens (classic)"
+                    echo "2. Click 'Generate new token (classic)'"
+                    echo "3. Select scopes: repo, read:user, user:email"
+                    echo "4. Copy the generated token"
+                    echo ""
+                    read -p "Enter your GitHub Personal Access Token (or 'skip' to continue without): " GITHUB_TOKEN
+                    
+                    if [ "$GITHUB_TOKEN" = "skip" ]; then
+                        GITHUB_TOKEN=""
+                        GITHUB_AUTH_METHOD="none"
+                        print_warning "Skipping GitHub MCP integration"
+                        break
+                    elif [ -z "$GITHUB_TOKEN" ]; then
+                        print_warning "Token is required for GitHub MCP integration!"
+                    fi
+                done
             else
                 GITHUB_AUTH_METHOD="ssh"
+                print_warning "Using SSH authentication - private repository access may be limited"
             fi
         else
             print_warning "No GitHub SSH authentication detected"

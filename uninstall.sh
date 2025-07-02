@@ -46,7 +46,7 @@ is_laravel_project() {
 }
 
 echo ""
-echo "🗑️  Laravel Claude Setup Uninstaller v1.5"
+echo "🗑️  Laravel Claude Setup Uninstaller v1.6"
 echo "============================================"
 echo ""
 
