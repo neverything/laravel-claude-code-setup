@@ -203,80 +203,7 @@ install_database() {
         go build -o db-mcp-server ./cmd/...
     fi
     
-    # Auto-generate config file from Laravel .env
-    print_status "Generating database configuration from .env..."
-    
-    # Validate required database environment variables
-    if [ -z "$DB_DATABASE" ]; then
-        print_warning "DB_DATABASE not set in .env file, skipping database MCP"
-        return 0
-    fi
-    
-    # Determine the correct database type
-    case "$DB_CONNECTION" in
-        "mysql")
-            DB_TYPE="mysql"
-            ;;
-        "pgsql"|"postgres"|"postgresql")
-            DB_TYPE="postgres"
-            ;;
-        "sqlite")
-            DB_TYPE="sqlite"
-            if [[ "$DB_DATABASE" == /* ]]; then
-                DB_PATH="$DB_DATABASE"
-            else
-                DB_PATH="$PROJECT_PATH/database/$DB_DATABASE"
-            fi
-            ;;
-        *)
-            DB_TYPE="mysql"
-            print_warning "Unknown database type: $DB_CONNECTION, defaulting to MySQL"
-            ;;
-    esac
-    
-    # Create the configuration file with correct FreePeak format
-    if [ "$DB_CONNECTION" = "sqlite" ]; then
-        cat > config.json << EOF
-{
-  "connections": [
-    {
-      "id": "laravel",
-      "type": "$DB_TYPE",
-      "database": "$DB_PATH",
-      "query_timeout": 60,
-      "max_open_conns": 10,
-      "max_idle_conns": 2,
-      "conn_max_lifetime_seconds": 300,
-      "conn_max_idle_time_seconds": 60
-    }
-  ]
-}
-EOF
-    else
-        cat > config.json << EOF
-{
-  "connections": [
-    {
-      "id": "laravel",
-      "type": "$DB_TYPE",
-      "host": "$DB_HOST",
-      "port": $DB_PORT,
-      "name": "$DB_DATABASE",
-      "user": "$DB_USERNAME",
-      "password": "$DB_PASSWORD",
-      "query_timeout": 60,
-      "max_open_conns": 20,
-      "max_idle_conns": 5,
-      "conn_max_lifetime_seconds": 300,
-      "conn_max_idle_time_seconds": 60
-    }
-  ]
-}
-EOF
-    fi
-    
-    print_success "Database configuration created!"
-    print_success "Database MCP Server installed and configured!"
+    print_success "Database MCP Server installed!"
 }
 
 # Install PDF MCP Server
@@ -371,45 +298,22 @@ generate_config() {
     # Create claude-code config directory if it doesn't exist
     mkdir -p "$HOME/.config/claude-code"
     
-    # Build database connection string based on DB type
-    if [ "$DB_CONNECTION" = "mysql" ]; then
-        DB_CONNECTION_STRING="mysql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_DATABASE"
-    elif [ "$DB_CONNECTION" = "pgsql" ] || [ "$DB_CONNECTION" = "postgres" ]; then
-        DB_CONNECTION_STRING="postgresql://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_DATABASE"
-    else
-        DB_CONNECTION_STRING="$DB_CONNECTION://$DB_USERNAME:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_DATABASE"
-    fi
-    
     # Configure GitHub MCP based on authentication method
     if [ "$GITHUB_AUTH_METHOD" = "ssh" ]; then
-        GITHUB_MCP_CONFIG='{
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {}'
         if [ ! -z "$GITHUB_REPO" ]; then
-            GITHUB_MCP_CONFIG='{
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_REPOSITORY": "'$GITHUB_REPO'"
-      }'
+            GITHUB_ENV='"GITHUB_REPOSITORY": "'$GITHUB_REPO'"'
+        else
+            GITHUB_ENV=""
         fi
     else
-        GITHUB_MCP_CONFIG='{
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "'$GITHUB_TOKEN'"'
+        GITHUB_ENV='"GITHUB_PERSONAL_ACCESS_TOKEN": "'$GITHUB_TOKEN'"'
         if [ ! -z "$GITHUB_REPO" ]; then
-            GITHUB_MCP_CONFIG+=',
-        "GITHUB_REPOSITORY": "'$GITHUB_REPO'"'
+            GITHUB_ENV+=', "GITHUB_REPOSITORY": "'$GITHUB_REPO'"'
         fi
-        GITHUB_MCP_CONFIG+='
-      }'
     fi
     
-# Generate the configuration
-cat > "$HOME/.config/claude-code/claude_desktop_config.json" << EOF
+    # Generate the configuration
+    cat > "$HOME/.config/claude-code/claude_desktop_config.json" << EOF
 {
   "mcpServers": {
     "context7": {
@@ -425,21 +329,27 @@ cat > "$HOME/.config/claude-code/claude_desktop_config.json" << EOF
       "env": {}
     },
     "database": {
-        "command": "$MCP_DIR/db-mcp-server/db-mcp-server",
-        "args": ["--config", "$MCP_DIR/db-mcp-server/config.json"],
-        "env": {}
+      "command": "$MCP_DIR/db-mcp-server/db-mcp-server",
+      "args": ["--config", "$MCP_DIR/db-mcp-server/config.json"],
+      "env": {}
     },
     "pdf": {
-        "command": "npx",
-        "args": ["-y", "@sylphlab/pdf-reader-mcp"],
-        "env": {}
+      "command": "npx",
+      "args": ["-y", "@sylphlab/pdf-reader-mcp"],
+      "env": {}
     },
     "web_fetch": {
-        "command": "node",
-        "args": ["$MCP_DIR/fetch-mcp/dist/index.js"],
-        "env": {}
+      "command": "node",
+      "args": ["$MCP_DIR/fetch-mcp/dist/index.js"],
+      "env": {}
     },
-    "github": $GITHUB_MCP_CONFIG,
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        $GITHUB_ENV
+      }
+    },
     "memory": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-memory"],
@@ -452,9 +362,74 @@ cat > "$HOME/.config/claude-code/claude_desktop_config.json" << EOF
 }
 EOF
 
+    # Generate database configuration if database is configured
+    if [ ! -z "$DB_DATABASE" ]; then
+        # Determine the correct database type
+        case "$DB_CONNECTION" in
+            "mysql")
+                DB_TYPE="mysql"
+                ;;
+            "pgsql"|"postgres"|"postgresql")
+                DB_TYPE="postgres"
+                ;;
+            "sqlite")
+                DB_TYPE="sqlite"
+                if [[ "$DB_DATABASE" == /* ]]; then
+                    DB_PATH="$DB_DATABASE"
+                else
+                    DB_PATH="$PROJECT_PATH/database/$DB_DATABASE"
+                fi
+                ;;
+            *)
+                DB_TYPE="mysql"
+                ;;
+        esac
+        
+        # Create the database configuration file
+        if [ "$DB_CONNECTION" = "sqlite" ]; then
+            cat > "$MCP_DIR/db-mcp-server/config.json" << EOF
+{
+  "connections": [
+    {
+      "id": "laravel",
+      "type": "$DB_TYPE",
+      "database": "$DB_PATH",
+      "query_timeout": 60,
+      "max_open_conns": 10,
+      "max_idle_conns": 2,
+      "conn_max_lifetime_seconds": 300,
+      "conn_max_idle_time_seconds": 60
+    }
+  ]
+}
+EOF
+        else
+            cat > "$MCP_DIR/db-mcp-server/config.json" << EOF
+{
+  "connections": [
+    {
+      "id": "laravel",
+      "type": "$DB_TYPE",
+      "host": "$DB_HOST",
+      "port": $DB_PORT,
+      "name": "$DB_DATABASE",
+      "user": "$DB_USERNAME",
+      "password": "$DB_PASSWORD",
+      "query_timeout": 60,
+      "max_open_conns": 20,
+      "max_idle_conns": 5,
+      "conn_max_lifetime_seconds": 300,
+      "conn_max_idle_time_seconds": 60
+    }
+  ]
+}
+EOF
+        fi
+        print_status "Database configuration created!"
+    fi
+
     # Add optional DebugBar MCP if available
     if grep -q "barryvdh/laravel-debugbar" composer.json 2>/dev/null; then
-        # Update JSON to include debugbar
         python3 -c "
 import json
 with open('$HOME/.config/claude-code/claude_desktop_config.json', 'r') as f:
@@ -549,7 +524,6 @@ EOF
 - Follow Filament's naming conventions
 EOF
 
-    # Create optimized Claude instructions
     cat > ".claude/instructions.md" << EOF
 # Claude Instructions for $PROJECT_NAME Laravel Project
 
@@ -612,11 +586,10 @@ You are working with a Laravel full-stack developer on the "$PROJECT_NAME" proje
 
 ## Available Tools
 You have access to the following MCP servers:
-- **Laravel Helper**: Run Artisan commands directly
+- **Context7**: Access latest Laravel documentation and any other framework docs
 - **Filesystem**: Read and edit project files
-- **Database**: Query and modify database
+- **Database**: Query and modify database directly
 - **Memory**: Remember project decisions and patterns
-- **Context7**: Access latest Laravel documentation
 - **GitHub**: Manage repository operations
 - **Web Fetch**: Access external resources
 - **PDF**: Read documentation PDFs
@@ -667,7 +640,6 @@ EOF
 - Implementing Alpine.js interactivity
 - Database migrations and model relationships
 - Feature testing with PHPUnit
-
 EOF
     
     print_success "Project prompts created!"
@@ -731,8 +703,8 @@ This Laravel project has been configured with Claude Code and the following MCP 
 ## Available MCP Servers
 
 ### 1. Context7
-- **Purpose**: Always access the latest documentation
-- **Features**: Real-time doc lookup, API reference
+- **Purpose**: Access latest documentation (Laravel + all frameworks)
+- **Features**: Real-time doc lookup, API reference, always up-to-date
 
 ### 2. Filesystem
 - **Purpose**: Read and edit project files
@@ -831,11 +803,11 @@ main() {
     echo "======================================"
     echo ""
     print_status "Next steps:"
-    echo "1. Restart Claude Code to load the new configuration"
+    echo "1. Restart Claude Code completely"
     echo "2. Open Claude Code in this project directory"
-    echo "3. Reference .claude/instructions.md for optimal AI assistance"
-    echo "4. Try asking Claude to run 'php artisan route:list' using the Laravel Helper"
-    echo "5. Ask Claude to remember important project decisions in Memory"
+    echo "3. Load helpful aliases: source .claude/shortcuts.sh"
+    echo "4. Try: 'Show me the project structure' or 'What's in the database?'"
+    echo "5. Ask Claude to remember important project decisions"
     echo "6. Start coding with AI assistance!"
     echo ""
     print_warning "Don't forget to source .claude/shortcuts.sh for helpful aliases!"
