@@ -529,7 +529,7 @@ configure_claude_mcp() {
     # These only need to be set up once and can be used by all projects
     
     # Check and add global GitHub MCP server
-    if ! claude mcp list 2>/dev/null | grep -q "^github[[:space:]]"; then
+    if ! claude mcp list 2>/dev/null | grep -q "^github:"; then
         print_status "Adding global GitHub MCP server..."
         if [ "$GITHUB_AUTH_METHOD" = "token" ] && [ ! -z "$GITHUB_TOKEN" ]; then
             # Add GitHub MCP server
@@ -680,7 +680,7 @@ PYTHON_EOF
     fi
     
     # Check and add global Memory MCP server
-    if ! claude mcp list 2>/dev/null | grep -q "^memory[[:space:]]"; then
+    if ! claude mcp list 2>/dev/null | grep -q "^memory:"; then
         print_status "Adding global Memory MCP server..."
         if claude mcp add "memory" npx @modelcontextprotocol/server-memory; then
             print_success "Global Memory MCP server added"
@@ -693,7 +693,7 @@ PYTHON_EOF
     
     # Check and add global Context7 MCP server
     if [ -f "$MCP_DIR/context7/dist/index.js" ]; then
-        if ! claude mcp list 2>/dev/null | grep -q "^context7[[:space:]]"; then
+        if ! claude mcp list 2>/dev/null | grep -q "^context7:"; then
             print_status "Adding global Context7 MCP server..."
             if claude mcp add "context7" node "$MCP_DIR/context7/dist/index.js"; then
                 print_success "Global Context7 MCP server added"
@@ -707,7 +707,7 @@ PYTHON_EOF
     
     # Check and add global Web Fetch MCP server
     if [ -f "$MCP_DIR/fetch-mcp/dist/index.js" ]; then
-        if ! claude mcp list 2>/dev/null | grep -q "^webfetch[[:space:]]"; then
+        if ! claude mcp list 2>/dev/null | grep -q "^webfetch:"; then
             print_status "Adding global Web Fetch MCP server..."
             if claude mcp add "webfetch" node "$MCP_DIR/fetch-mcp/dist/index.js"; then
                 print_success "Global Web Fetch MCP server added"
@@ -804,7 +804,7 @@ PYTHON_EOF
     # Show summary
     echo ""
     print_status "Global MCP servers (shared across all projects):"
-    claude mcp list | grep -E "^(github|memory|context7|webfetch)[[:space:]]" | sed 's/^/  ✅ /' || true
+    claude mcp list | grep -E "^(github|memory|context7|webfetch):" | sed 's/^/  ✅ /' || true
     echo ""
     print_status "Project-specific MCP servers for $PROJECT_NAME:"
     claude mcp list | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | sed 's/^/  ✅ /' || true
@@ -1303,7 +1303,7 @@ main() {
     print_status "📋 Installed MCP Servers:"
     echo ""
     echo "  Global Servers (shared across all projects):"
-    claude mcp list | grep -E "^(github|memory|context7|webfetch)[[:space:]]" | sed 's/^/    ✅ /' || true
+    claude mcp list | grep -E "^(github|memory|context7|webfetch):" | sed 's/^/    ✅ /' || true
     echo ""
     echo "  Project-Specific Servers for $PROJECT_NAME:"
     claude mcp list | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | sed 's/^/    ✅ /' || true
@@ -1322,7 +1322,7 @@ main() {
     echo ""
     
     # Count successful MCP servers
-    GLOBAL_MCP_COUNT=$(claude mcp list | grep -E "^(github|memory|context7|webfetch)[[:space:]]" | wc -l | tr -d ' ')
+    GLOBAL_MCP_COUNT=$(claude mcp list | grep -E "^(github|memory|context7|webfetch):" | wc -l | tr -d ' ')
     PROJECT_MCP_COUNT=$(claude mcp list | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | wc -l | tr -d ' ')
     TOTAL_MCP_COUNT=$(claude mcp list | wc -l | tr -d ' ')
     
