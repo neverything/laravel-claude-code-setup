@@ -3,7 +3,7 @@
 # Laravel Claude Code Setup Script
 # Automatically configures Claude Code with MCP servers for Laravel development
 # Author: Laravel Developer
-# Version: 1.0
+# Version: 1.2 - Removed PDF MCP server to prevent installation issues
 
 set -e  # Exit on any error
 
@@ -206,16 +206,6 @@ install_database() {
     print_success "Database MCP Server installed!"
 }
 
-# Install PDF MCP Server
-install_pdf() {
-    print_status "Installing PDF MCP Server..."
-    
-    # The sylphxltd/pdf-reader-mcp is published as @sylphlab/pdf-reader-mcp on npm
-    npm install -g @sylphlab/pdf-reader-mcp
-    
-    print_success "PDF MCP Server installed!"
-}
-
 # Install Web Fetch MCP Server
 install_web_fetch() {
     print_status "Installing Web Fetch MCP Server..."
@@ -288,80 +278,12 @@ parse_env() {
     print_success "Environment variables parsed!"
 }
 
-# Generate Claude Code configuration
-generate_config() {
-    print_status "Generating Claude Code configuration..."
+# Generate database configuration
+generate_database_config() {
+    print_status "Generating database configuration..."
     
-    PROJECT_NAME=$(basename "$PWD")
     PROJECT_PATH="$PWD"
     
-    # Create claude-code config directory if it doesn't exist
-    mkdir -p "$HOME/.config/claude-code"
-    
-    # Configure GitHub MCP based on authentication method
-    if [ "$GITHUB_AUTH_METHOD" = "ssh" ]; then
-        if [ ! -z "$GITHUB_REPO" ]; then
-            GITHUB_ENV='"GITHUB_REPOSITORY": "'$GITHUB_REPO'"'
-        else
-            GITHUB_ENV=""
-        fi
-    else
-        GITHUB_ENV='"GITHUB_PERSONAL_ACCESS_TOKEN": "'$GITHUB_TOKEN'"'
-        if [ ! -z "$GITHUB_REPO" ]; then
-            GITHUB_ENV+=', "GITHUB_REPOSITORY": "'$GITHUB_REPO'"'
-        fi
-    fi
-    
-    # Generate the configuration
-    cat > "$HOME/.config/claude-code/claude_desktop_config.json" << EOF
-{
-  "mcpServers": {
-    "context7": {
-      "command": "node",
-      "args": ["$MCP_DIR/context7/build/index.js"],
-      "env": {
-        "PROJECT_PATH": "$PROJECT_PATH"
-      }
-    },
-    "filesystem": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "$PROJECT_PATH"],
-      "env": {}
-    },
-    "database": {
-      "command": "$MCP_DIR/db-mcp-server/db-mcp-server",
-      "args": ["--config", "$MCP_DIR/db-mcp-server/config.json"],
-      "env": {}
-    },
-    "pdf": {
-      "command": "npx",
-      "args": ["-y", "@sylphlab/pdf-reader-mcp"],
-      "env": {}
-    },
-    "web_fetch": {
-      "command": "node",
-      "args": ["$MCP_DIR/fetch-mcp/dist/index.js"],
-      "env": {}
-    },
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": {
-        $GITHUB_ENV
-      }
-    },
-    "memory": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"],
-      "env": {
-        "MEMORY_STORAGE_PATH": "$PROJECT_PATH/.claude/memory"
-      }
-    }
-  },
-  "globalShortcut": "CommandOrControl+Shift+Space"
-}
-EOF
-
     # Generate database configuration if database is configured
     if [ ! -z "$DB_DATABASE" ]; then
         # Determine the correct database type
@@ -387,12 +309,12 @@ EOF
         
         # Create the database configuration file
         if [ "$DB_CONNECTION" = "sqlite" ]; then
-            cat > "$MCP_DIR/db-mcp-server/config.json" << EOF
+            cat > "$MCP_DIR/db-mcp-server/config.json" << 'DBEOF'
 {
   "connections": [
     {
       "id": "laravel",
-      "type": "$DB_TYPE",
+      "type": "sqlite",
       "database": "$DB_PATH",
       "query_timeout": 60,
       "max_open_conns": 10,
@@ -402,9 +324,9 @@ EOF
     }
   ]
 }
-EOF
+DBEOF
         else
-            cat > "$MCP_DIR/db-mcp-server/config.json" << EOF
+            cat > "$MCP_DIR/db-mcp-server/config.json" << DBEOF
 {
   "connections": [
     {
@@ -423,41 +345,174 @@ EOF
     }
   ]
 }
-EOF
+DBEOF
         fi
         print_status "Database configuration created!"
     fi
-
-    # Add optional DebugBar MCP if available
-    if grep -q "barryvdh/laravel-debugbar" composer.json 2>/dev/null; then
-        python3 -c "
-import json
-with open('$HOME/.config/claude-code/claude_desktop_config.json', 'r') as f:
-    config = json.load(f)
-config['mcpServers']['debugbar'] = {
-    'command': 'npx',
-    'args': ['-y', '@sebdesign/debugbar-mcp-server'],
-    'env': {
-        'LARAVEL_PROJECT_PATH': '$PROJECT_PATH'
-    }
+    
+    print_success "Database configuration completed!"
 }
-with open('$HOME/.config/claude-code/claude_desktop_config.json', 'w') as f:
-    json.dump(config, f, indent=2)
-" 2>/dev/null || true
+
+# Configure Claude Code MCP Servers
+configure_claude_mcp() {
+    print_status "Configuring Claude Code MCP servers..."
+    
+    PROJECT_PATH="$PWD"
+    
+    # Check if claude command is available
+    if ! command -v claude &> /dev/null; then
+        print_error "Claude Code CLI not found. Please ensure Claude Code is properly installed."
+        return 1
     fi
     
-    print_success "Configuration generated!"
+    # Remove any existing servers first to avoid conflicts
+    print_status "Cleaning up existing MCP servers..."
+    claude mcp list 2>/dev/null | grep -E "^[a-z]" | awk '{print $1}' | xargs -I {} claude mcp remove {} 2>/dev/null || true
+    
+    print_status "Adding Filesystem MCP server..."
+    if claude mcp add filesystem npx @modelcontextprotocol/server-filesystem "$PROJECT_PATH"; then
+        print_success "Filesystem MCP server added"
+    else
+        print_warning "Failed to add Filesystem MCP server"
+    fi
+    
+    print_status "Adding Memory MCP server..."
+    if claude mcp add memory npx @modelcontextprotocol/server-memory; then
+        print_success "Memory MCP server added"
+    else
+        print_warning "Failed to add Memory MCP server"
+    fi
+    
+    print_status "Adding GitHub MCP server..."
+    if [ "$GITHUB_AUTH_METHOD" = "ssh" ]; then
+        if [ ! -z "$GITHUB_REPO" ]; then
+            if claude mcp add github npx @modelcontextprotocol/server-github --repository "$GITHUB_REPO"; then
+                print_success "GitHub MCP server added with repository: $GITHUB_REPO"
+            else
+                print_warning "Failed to add GitHub MCP server with repository"
+            fi
+        else
+            if claude mcp add github npx @modelcontextprotocol/server-github; then
+                print_success "GitHub MCP server added"
+            else
+                print_warning "Failed to add GitHub MCP server"
+            fi
+        fi
+    else
+        # For token-based authentication, we need to set environment variable
+        if [ ! -z "$GITHUB_TOKEN" ]; then
+            if GITHUB_PERSONAL_ACCESS_TOKEN="$GITHUB_TOKEN" claude mcp add github npx @modelcontextprotocol/server-github; then
+                print_success "GitHub MCP server added with token authentication"
+            else
+                print_warning "Failed to add GitHub MCP server with token"
+            fi
+        else
+            print_warning "GitHub token not available, skipping GitHub MCP server"
+        fi
+    fi
+    
+    # Add Context7 if build exists
+    if [ -f "$MCP_DIR/context7/build/index.js" ]; then
+        print_status "Adding Context7 MCP server..."
+        if PROJECT_PATH="$PROJECT_PATH" claude mcp add context7 node "$MCP_DIR/context7/build/index.js"; then
+            print_success "Context7 MCP server added"
+        else
+            print_warning "Failed to add Context7 MCP server"
+        fi
+    else
+        print_warning "Context7 build not found, skipping Context7 MCP server"
+    fi
+    
+    # Add Web Fetch if build exists
+    if [ -f "$MCP_DIR/fetch-mcp/dist/index.js" ]; then
+        print_status "Adding Web Fetch MCP server..."
+        if claude mcp add webfetch node "$MCP_DIR/fetch-mcp/dist/index.js"; then
+            print_success "Web Fetch MCP server added"
+        else
+            print_warning "Failed to add Web Fetch MCP server"
+        fi
+    else
+        print_warning "Web Fetch build not found, skipping Web Fetch MCP server"
+    fi
+    
+    # Add Database if binary exists and database is configured
+    if [ -f "$MCP_DIR/db-mcp-server/db-mcp-server" ] || [ -f "$MCP_DIR/db-mcp-server/bin/server" ]; then
+        if [ -f "$MCP_DIR/db-mcp-server/config.json" ] && [ ! -z "$DB_DATABASE" ]; then
+            print_status "Adding Database MCP server..."
+            
+            # Try different possible binary locations
+            DB_BINARY=""
+            if [ -f "$MCP_DIR/db-mcp-server/db-mcp-server" ]; then
+                DB_BINARY="$MCP_DIR/db-mcp-server/db-mcp-server"
+            elif [ -f "$MCP_DIR/db-mcp-server/bin/server" ]; then
+                DB_BINARY="$MCP_DIR/db-mcp-server/bin/server"
+            fi
+            
+            if [ ! -z "$DB_BINARY" ]; then
+                if claude mcp add database "$DB_BINARY" --config "$MCP_DIR/db-mcp-server/config.json"; then
+                    print_success "Database MCP server added"
+                else
+                    print_warning "Failed to add Database MCP server"
+                fi
+            else
+                print_warning "Database binary not found, skipping Database MCP server"
+            fi
+        else
+            print_warning "Database not configured or config missing, skipping Database MCP server"
+        fi
+    else
+        print_warning "Database MCP server not built, skipping Database MCP server"
+    fi
+    
+    # Add Laravel DebugBar MCP if available
+    if grep -q "barryvdh/laravel-debugbar" composer.json 2>/dev/null; then
+        print_status "Adding Laravel DebugBar MCP server..."
+        if LARAVEL_PROJECT_PATH="$PROJECT_PATH" claude mcp add debugbar npx @sebdesign/debugbar-mcp-server; then
+            print_success "Laravel DebugBar MCP server added"
+        else
+            print_warning "Failed to add Laravel DebugBar MCP server"
+        fi
+    else
+        print_status "Laravel DebugBar not detected, skipping DebugBar MCP server"
+    fi
+    
+    # Display final MCP server list
+    print_status "Final MCP server configuration:"
+    claude mcp list
+    
+    print_success "Claude Code MCP configuration completed!"
 }
 
 # Create project-specific Claude prompts
 create_project_prompts() {
     print_status "Creating project-specific Claude prompts..."
     
+    # Get current project details
     PROJECT_NAME=$(basename "$PWD")
-    mkdir -p ".claude"
-    mkdir -p ".claude/memory"
+    PROJECT_PATH="$PWD"
     
-    cat > ".claude/project_context.md" << EOF
+    # Ensure we're in the correct directory
+    cd "$PROJECT_PATH"
+    
+    # Create .claude directory with explicit error checking
+    if ! mkdir -p ".claude"; then
+        print_error "Failed to create .claude directory in $PROJECT_PATH"
+        return 1
+    fi
+    
+    if ! mkdir -p ".claude/memory"; then
+        print_error "Failed to create .claude/memory directory in $PROJECT_PATH"
+        return 1
+    fi
+    
+    # Verify directories were created
+    if [ ! -d ".claude" ]; then
+        print_error ".claude directory was not created successfully"
+        return 1
+    fi
+    
+    print_status "Creating project context file..."
+    cat > ".claude/project_context.md" << 'EOF'
 # $PROJECT_NAME - Laravel Project Context
 
 ## Project Overview
@@ -468,13 +523,13 @@ This is a Laravel project using the following stack:
 - **Database**: $DB_CONNECTION
 
 ## Key Directories
-- \`app/\` - Application logic (Models, Controllers, etc.)
-- \`resources/views/\` - Blade templates
-- \`resources/js/\` - Alpine.js components
-- \`resources/css/\` - Tailwind CSS styles
-- \`database/\` - Migrations, seeders, factories
-- \`routes/\` - Route definitions
-- \`config/\` - Configuration files
+- `app/` - Application logic (Models, Controllers, etc.)
+- `resources/views/` - Blade templates
+- `resources/js/` - Alpine.js components
+- `resources/css/` - Tailwind CSS styles
+- `database/` - Migrations, seeders, factories
+- `routes/` - Route definitions
+- `config/` - Configuration files
 
 ## Development Guidelines
 - Follow Laravel best practices
@@ -485,14 +540,24 @@ This is a Laravel project using the following stack:
 - Write feature tests for new functionality
 
 ## Common Commands
-- \`php artisan serve\` - Start development server
-- \`php artisan migrate\` - Run migrations
-- \`php artisan make:livewire ComponentName\` - Create Livewire component
-- \`npm run dev\` - Build assets for development
-- \`php artisan test\` - Run tests
+- `php artisan serve` - Start development server
+- `php artisan migrate` - Run migrations
+- `php artisan make:livewire ComponentName` - Create Livewire component
+- `npm run dev` - Build assets for development
+- `php artisan test` - Run tests
 EOF
 
-    cat > ".claude/coding_standards.md" << EOF
+    # Replace variables in the file
+    sed -i '' "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/project_context.md" 2>/dev/null || sed -i "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/project_context.md"
+    sed -i '' "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/project_context.md" 2>/dev/null || sed -i "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/project_context.md"
+
+    if [ ! -f ".claude/project_context.md" ]; then
+        print_error "Failed to create project_context.md"
+        return 1
+    fi
+
+    print_status "Creating coding standards file..."
+    cat > ".claude/coding_standards.md" << 'EOF'
 # Coding Standards for $PROJECT_NAME
 
 ## Laravel Conventions
@@ -524,7 +589,11 @@ EOF
 - Follow Filament's naming conventions
 EOF
 
-    cat > ".claude/instructions.md" << EOF
+    # Replace variables in the file
+    sed -i '' "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/coding_standards.md" 2>/dev/null || sed -i "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/coding_standards.md"
+
+    print_status "Creating Claude instructions file..."
+    cat > ".claude/instructions.md" << 'EOF'
 # Claude Instructions for $PROJECT_NAME Laravel Project
 
 ## Project Context & Tech Stack
@@ -592,7 +661,6 @@ You have access to the following MCP servers:
 - **Memory**: Remember project decisions and patterns
 - **GitHub**: Manage repository operations
 - **Web Fetch**: Access external resources
-- **PDF**: Read documentation PDFs
 
 Use these tools actively to understand the project structure, run commands, and maintain context across sessions.
 
@@ -604,7 +672,12 @@ Use these tools actively to understand the project structure, run commands, and 
 Remember: Always prioritize Laravel conventions, use the developer's preferred stack (Livewire/Filament/Alpine/Tailwind), and maintain high code quality standards.
 EOF
 
-    cat > ".claude/memory_prompts.md" << EOF
+    # Replace variables in the file
+    sed -i '' "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/instructions.md" 2>/dev/null || sed -i "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/instructions.md"
+    sed -i '' "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/instructions.md" 2>/dev/null || sed -i "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/instructions.md"
+
+    print_status "Creating memory prompts file..."
+    cat > ".claude/memory_prompts.md" << 'EOF'
 # Memory Initialization for $PROJECT_NAME
 
 ## Project Information
@@ -641,15 +714,44 @@ EOF
 - Database migrations and model relationships
 - Feature testing with PHPUnit
 EOF
+
+    # Replace variables in the file
+    sed -i '' "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/memory_prompts.md" 2>/dev/null || sed -i "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/memory_prompts.md"
+    sed -i '' "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/memory_prompts.md" 2>/dev/null || sed -i "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/memory_prompts.md"
     
-    print_success "Project prompts created!"
+    # Verify all files were created successfully
+    local files_created=0
+    for file in "project_context.md" "coding_standards.md" "instructions.md" "memory_prompts.md"; do
+        if [ -f ".claude/$file" ]; then
+            ((files_created++))
+        else
+            print_error "Failed to create .claude/$file"
+        fi
+    done
+    
+    if [ $files_created -eq 4 ]; then
+        print_success "Project prompts created! ($files_created/4 files)"
+    else
+        print_error "Only $files_created/4 project files were created successfully"
+        return 1
+    fi
 }
 
 # Create useful aliases and shortcuts
 create_shortcuts() {
     print_status "Creating useful shortcuts..."
     
-    cat > ".claude/shortcuts.sh" << EOF
+    # Ensure we're in the project directory
+    PROJECT_PATH="$PWD"
+    cd "$PROJECT_PATH"
+    
+    # Verify .claude directory exists
+    if [ ! -d ".claude" ]; then
+        print_error ".claude directory does not exist, cannot create shortcuts"
+        return 1
+    fi
+    
+    cat > ".claude/shortcuts.sh" << 'EOF'
 #!/bin/bash
 
 # Laravel Development Shortcuts for Claude Code
@@ -683,19 +785,37 @@ alias serve='php artisan serve'
 alias tinker='php artisan tinker'
 alias fresh='php artisan migrate:fresh --seed'
 
-echo "Laravel development shortcuts loaded!"
+echo "🚀 Laravel development shortcuts loaded!"
 echo "Use 'pa' instead of 'php artisan', 'pam' for migrate, etc."
 EOF
 
     chmod +x ".claude/shortcuts.sh"
-    print_success "Shortcuts created! Source .claude/shortcuts.sh to use them."
+    
+    # Verify the file was created
+    if [ -f ".claude/shortcuts.sh" ] && [ -x ".claude/shortcuts.sh" ]; then
+        print_success "Shortcuts created! Source .claude/shortcuts.sh to use them."
+    else
+        print_error "Failed to create shortcuts.sh file"
+        return 1
+    fi
 }
 
 # Generate project documentation
 generate_docs() {
     print_status "Generating project documentation..."
     
-    cat > ".claude/README.md" << EOF
+    # Ensure we're in the project directory
+    PROJECT_PATH="$PWD"
+    PROJECT_NAME=$(basename "$PROJECT_PATH")
+    cd "$PROJECT_PATH"
+    
+    # Verify .claude directory exists
+    if [ ! -d ".claude" ]; then
+        print_error ".claude directory does not exist, cannot create documentation"
+        return 1
+    fi
+    
+    cat > ".claude/README.md" << 'EOF'
 # Claude Code Setup for $PROJECT_NAME
 
 This Laravel project has been configured with Claude Code and the following MCP servers:
@@ -715,23 +835,19 @@ This Laravel project has been configured with Claude Code and the following MCP 
 - **Connection**: $DB_CONNECTION database
 - **Features**: Query execution, schema inspection
 
-### 4. PDF Reader
-- **Purpose**: Read PDF documentation
-- **Features**: Extract text from PDFs, analyze documents
-
-### 5. Web Fetch
+### 4. Web Fetch
 - **Purpose**: Fetch internet resources
 - **Features**: API calls, web scraping, documentation lookup
 
-### 6. GitHub Integration
+### 5. GitHub Integration
 - **Purpose**: GitHub operations
 - **Features**: Repository management, issue tracking, PR reviews
 
-### 7. Memory
+### 6. Memory
 - **Purpose**: Persistent memory across sessions
 - **Features**: Remember project details, coding patterns, preferences, decisions
 
-### 8. Laravel DebugBar (Optional)
+### 7. Laravel DebugBar (Optional)
 - **Purpose**: Real-time debug information access
 - **Features**: Query analysis, performance metrics, request debugging
 - **Note**: Only installed if Laravel DebugBar package is detected
@@ -750,12 +866,22 @@ This Laravel project has been configured with Claude Code and the following MCP 
 - Tailwind CSS for styling
 
 ## Getting Started
-Run \`source .claude/shortcuts.sh\` to load helpful aliases.
+Run `source .claude/shortcuts.sh` to load helpful aliases.
 
 Happy coding! 🚀
 EOF
 
-    print_success "Documentation generated!"
+    # Replace variables in the file
+    sed -i '' "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/README.md" 2>/dev/null || sed -i "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/README.md"
+    sed -i '' "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/README.md" 2>/dev/null || sed -i "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/README.md"
+
+    # Verify the file was created
+    if [ -f ".claude/README.md" ]; then
+        print_success "Documentation generated!"
+    else
+        print_error "Failed to create README.md file"
+        return 1
+    fi
 }
 
 # Main installation function
@@ -764,6 +890,9 @@ main() {
     echo "Laravel Claude Code Setup Script"
     echo "======================================"
     echo ""
+    
+    # Store the original directory
+    ORIGINAL_DIR="$PWD"
     
     # Pre-flight checks
     check_laravel_project
@@ -779,38 +908,91 @@ main() {
     # Create MCP directory
     create_mcp_directory
     
-    # Install MCP servers
+    # Install MCP servers (these change directories, so we need to return)
     install_context7
+    cd "$ORIGINAL_DIR"
+    
     install_filesystem
+    cd "$ORIGINAL_DIR"
+    
     install_database
-    install_pdf
+    cd "$ORIGINAL_DIR"
+    
     install_web_fetch
+    cd "$ORIGINAL_DIR"
+    
     install_github
+    cd "$ORIGINAL_DIR"
+    
     install_memory
+    cd "$ORIGINAL_DIR"
+    
     install_debugbar_mcp
+    cd "$ORIGINAL_DIR"
     
-    # Generate configuration
-    generate_config
+    # Generate database configuration
+    generate_database_config
+    cd "$ORIGINAL_DIR"
     
-    # Create project-specific files
-    create_project_prompts
-    create_shortcuts
-    generate_docs
+    # Create project-specific files (these MUST run in the project directory)
+    print_status "Creating project-specific files in: $ORIGINAL_DIR"
+    
+    if create_project_prompts; then
+        print_success "Project prompts created successfully"
+    else
+        print_error "Failed to create project prompts"
+        exit 1
+    fi
+    
+    if create_shortcuts; then
+        print_success "Shortcuts created successfully"
+    else
+        print_error "Failed to create shortcuts"
+        exit 1
+    fi
+    
+    if generate_docs; then
+        print_success "Documentation created successfully"
+    else
+        print_error "Failed to create documentation"
+        exit 1
+    fi
+    
+    # Configure Claude Code MCP servers
+    configure_claude_mcp
+    cd "$ORIGINAL_DIR"
+    
+    # Final verification
+    print_status "Verifying project files..."
+    if [ -d ".claude" ] && [ -f ".claude/shortcuts.sh" ] && [ -f ".claude/project_context.md" ]; then
+        print_success "All project files created successfully in $(pwd)/.claude/"
+        ls -la .claude/
+    else
+        print_error "Project files verification failed"
+        exit 1
+    fi
     
     echo ""
     echo "======================================"
     print_success "Setup completed successfully!"
     echo "======================================"
     echo ""
-    print_status "Next steps:"
-    echo "1. Restart Claude Code completely"
-    echo "2. Open Claude Code in this project directory"
-    echo "3. Load helpful aliases: source .claude/shortcuts.sh"
-    echo "4. Try: 'Show me the project structure' or 'What's in the database?'"
-    echo "5. Ask Claude to remember important project decisions"
-    echo "6. Start coding with AI assistance!"
+    print_status "🚀 Claude Code is now fully configured with MCP servers!"
     echo ""
-    print_warning "Don't forget to source .claude/shortcuts.sh for helpful aliases!"
+    print_status "Next steps:"
+    echo "1. Claude Code is ready to use immediately"
+    echo "2. Load helpful aliases: source .claude/shortcuts.sh"
+    echo "3. Test MCP servers with: 'Can you list available MCP servers and read my .env file?'"
+    echo "4. Try: 'Show me the project structure' or 'What's in my database?'"
+    echo "5. Ask Claude to remember important project decisions"
+    echo "6. Start coding with full AI assistance!"
+    echo ""
+    print_status "Available MCP Servers:"
+    claude mcp list | sed 's/^/  /'
+    echo ""
+    print_warning "💡 Pro tip: Use 'source .claude/shortcuts.sh' for Laravel aliases (pa, pam, par, etc.)"
+    echo ""
+    print_success "🎉 Your Laravel + Livewire + Filament + Alpine + Tailwind development environment is ready!"
     echo ""
 }
 
