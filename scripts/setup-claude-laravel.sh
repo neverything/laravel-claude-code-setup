@@ -283,7 +283,8 @@ EOF
 install_pdf() {
     print_status "Installing PDF MCP Server..."
     
-    npm install -g @modelcontextprotocol/server-pdf
+    # The sylphxltd/pdf-reader-mcp is published as @sylphlab/pdf-reader-mcp on npm
+    npm install -g @sylphlab/pdf-reader-mcp
     
     print_success "PDF MCP Server installed!"
 }
@@ -292,7 +293,17 @@ install_pdf() {
 install_web_fetch() {
     print_status "Installing Web Fetch MCP Server..."
     
-    npm install -g @modelcontextprotocol/server-fetch
+    cd "$MCP_DIR"
+    
+    if [ ! -d "fetch-mcp" ]; then
+        git clone https://github.com/zcaceres/fetch-mcp.git fetch-mcp
+    fi
+    
+    cd fetch-mcp
+    
+    # Install dependencies and build
+    npm install
+    npm run build
     
     print_success "Web Fetch MCP Server installed!"
 }
@@ -466,14 +477,14 @@ cat > "$HOME/.config/claude-code/claude_desktop_config.json" << EOF
         "env": {}
     },
     "pdf": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-pdf"],
-      "env": {}
+        "command": "npx",
+        "args": ["-y", "@sylphlab/pdf-reader-mcp"],
+        "env": {}
     },
     "web_fetch": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-fetch"],
-      "env": {}
+        "command": "node",
+        "args": ["$MCP_DIR/fetch-mcp/dist/index.js"],
+        "env": {}
     },
     "github": $GITHUB_MCP_CONFIG,
     "laravel_helper": {
