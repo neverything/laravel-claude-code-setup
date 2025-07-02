@@ -113,27 +113,13 @@ check_prerequisites() {
 run_setup() {
     print_status "Downloading and running setup script..."
     
-    # Create temporary directory
-    TEMP_DIR=$(mktemp -d)
-    ORIGINAL_DIR=$(pwd)
-    
-    # Download the main script
+    # Download and execute directly (no temp files)
     print_status "Downloading main installation script..."
-    if ! curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/scripts/setup-claude-laravel.sh -o "$TEMP_DIR/setup-claude-laravel.sh"; then
-        print_error "Failed to download installation script"
+    if ! curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/scripts/setup-claude-laravel.sh | bash; then
+        print_error "Failed to download or execute installation script"
         print_error "Please check your internet connection and try again"
         exit 1
     fi
-    
-    # Make it executable
-    chmod +x "$TEMP_DIR/setup-claude-laravel.sh"
-    
-    # Run the setup from the Laravel project directory
-    cd "$ORIGINAL_DIR"
-    "$TEMP_DIR/setup-claude-laravel.sh"
-    
-    # Cleanup
-    rm -rf "$TEMP_DIR"
 }
 
 # Main installation
