@@ -31,9 +31,17 @@ print_error() {
 }
 
 # Fix for pipe execution - redirect stdin to terminal
-if [ ! -t 0 ]; then
+# Check if we're in a pipe and /dev/tty is available
+if [ ! -t 0 ] && [ -e /dev/tty ]; then
     # We're in a pipe, read from /dev/tty instead
     exec < /dev/tty
+elif [ ! -t 0 ]; then
+    # We're in a pipe but /dev/tty might not be available
+    print_error "This script requires interactive input. Please run it directly:"
+    echo "curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/uninstall.sh -o uninstall.sh"
+    echo "chmod +x uninstall.sh"
+    echo "./uninstall.sh"
+    exit 1
 fi
 
 # Get current project info
