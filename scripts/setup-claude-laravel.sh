@@ -317,22 +317,6 @@ install_github() {
     print_success "GitHub MCP Server installed!"
 }
 
-# Install Laravel Helper Tools MCP Server
-install_laravel_helper() {
-    print_status "Installing Laravel Helper Tools MCP Server..."
-    
-    cd "$MCP_DIR"
-    
-    if [ ! -d "laravel-helper" ]; then
-        git clone https://github.com/jsonallen/laravel-helper-tools.git laravel-helper
-    fi
-    
-    cd laravel-helper
-    npm install
-    
-    print_success "Laravel Helper Tools MCP Server installed!"
-}
-
 # Install Memory MCP Server
 install_memory() {
     print_status "Installing Memory MCP Server..."
@@ -487,13 +471,6 @@ cat > "$HOME/.config/claude-code/claude_desktop_config.json" << EOF
         "env": {}
     },
     "github": $GITHUB_MCP_CONFIG,
-    "laravel_helper": {
-      "command": "node",
-      "args": ["$MCP_DIR/laravel-helper/build/index.js"],
-      "env": {
-        "LARAVEL_PROJECT_PATH": "$PROJECT_PATH"
-      }
-    },
     "memory": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-memory"],
@@ -813,19 +790,15 @@ This Laravel project has been configured with Claude Code and the following MCP 
 - **Purpose**: GitHub operations
 - **Features**: Repository management, issue tracking, PR reviews
 
-### 7. Laravel Helper Tools
-- **Purpose**: Laravel-specific operations
-- **Features**: Run Artisan commands, Laravel project management, model operations
-
-### 8. Memory
+### 7. Memory
 - **Purpose**: Persistent memory across sessions
 - **Features**: Remember project details, coding patterns, preferences, decisions
 
-### 9. Laravel Documentation
+### 8. Laravel Documentation
 - **Purpose**: Access Laravel documentation and package recommendations
 - **Features**: Documentation search, package suggestions, version-specific docs
 
-### 10. Laravel DebugBar (Optional)
+### 9. Laravel DebugBar (Optional)
 - **Purpose**: Real-time debug information access
 - **Features**: Query analysis, performance metrics, request debugging
 - **Note**: Only installed if Laravel DebugBar package is detected
@@ -880,7 +853,6 @@ main() {
     install_pdf
     install_web_fetch
     install_github
-    install_laravel_helper
     install_memory
     install_laravel_docs
     install_debugbar_mcp
