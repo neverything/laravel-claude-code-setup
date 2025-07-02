@@ -130,7 +130,7 @@ run_setup() {
     
     # Run the setup from the Laravel project directory
     cd "$ORIGINAL_DIR"
-    "$TEMP_DIR/setup-claude-laravel.sh"
+    "$TEMP_DIR/setup-claude-code-laravel.sh"
     
     # Cleanup
     rm -rf "$TEMP_DIR"
