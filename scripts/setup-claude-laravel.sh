@@ -52,11 +52,50 @@ collect_tokens() {
     print_status "Checking GitHub authentication..."
     echo ""
     
-    # Check if GITHUB_TOKEN is already set
+    # Check if GITHUB_TOKEN is already set in environment
     if [ -n "$GITHUB_TOKEN" ]; then
-        print_success "Using GITHUB_TOKEN from environment"
+        print_success "Using GITHUB_TOKEN from environment: ${GITHUB_TOKEN:0:8}..."
         GITHUB_AUTH_METHOD="token"
-    else
+        
+        # Ask if user wants to update the token
+        if [ -t 0 ]; then  # Only ask in interactive mode
+            echo ""
+            read -p "Do you want to update this GitHub token? (y/n): " update_token
+            if [ "$update_token" = "y" ] || [ "$update_token" = "yes" ]; then
+                GITHUB_TOKEN=""  # Clear the token to prompt for a new one
+                print_status "Please provide the new GitHub token..."
+            fi
+        fi
+    fi
+    
+    # Check if token is configured in Claude config file
+    CONFIG_FILE="$HOME/.claude.json"
+    if [ -z "$GITHUB_TOKEN" ] && [ -f "$CONFIG_FILE" ]; then
+        # Check for existing token in global config
+        EXISTING_TOKEN=""
+        if command -v jq &> /dev/null; then
+            EXISTING_TOKEN=$(jq -r '.mcpServers.github.env.GITHUB_PERSONAL_ACCESS_TOKEN // empty' "$CONFIG_FILE" 2>/dev/null)
+        fi
+        
+        if [ ! -z "$EXISTING_TOKEN" ] && [ "$EXISTING_TOKEN" != "null" ]; then
+            print_success "Found existing GitHub token in Claude config: ${EXISTING_TOKEN:0:8}..."
+            GITHUB_TOKEN="$EXISTING_TOKEN"
+            GITHUB_AUTH_METHOD="token"
+            
+            # Ask if user wants to update the existing token
+            if [ -t 0 ]; then  # Only ask in interactive mode
+                echo ""
+                read -p "Do you want to update this GitHub token? (y/n): " update_existing
+                if [ "$update_existing" = "y" ] || [ "$update_existing" = "yes" ]; then
+                    GITHUB_TOKEN=""  # Clear to prompt for new one
+                    print_status "Please provide the new GitHub token..."
+                fi
+            fi
+        fi
+    fi
+    
+    # If no token found or user wants to update, continue with existing logic
+    if [ -z "$GITHUB_TOKEN" ]; then
         # Test SSH authentication with GitHub
         if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
             print_success "GitHub SSH authentication detected!"
@@ -179,8 +218,260 @@ collect_tokens() {
         if [ ! -z "$GITHUB_REPO" ]; then
             print_status "Repository: $GITHUB_REPO"
         fi
+        if [ ! -z "$GITHUB_TOKEN" ]; then
+            print_status "Token: ${GITHUB_TOKEN:0:8}..."
+        fi
     fi
     echo ""
+
+    collect_figma_token
+}
+
+# Collect Figma API token
+collect_figma_token() {
+    print_status "Checking Figma API configuration..."
+    echo ""
+    
+    # Check if FIGMA_ACCESS_TOKEN is already set in environment
+    if [ -n "$FIGMA_ACCESS_TOKEN" ]; then
+        print_success "Using FIGMA_ACCESS_TOKEN from environment: ${FIGMA_ACCESS_TOKEN:0:8}..."
+        
+        # Ask if user wants to update the token
+        if [ -t 0 ]; then  # Only ask in interactive mode
+            echo ""
+            read -p "Do you want to update this Figma token? (y/n): " update_figma_token
+            if [ "$update_figma_token" = "y" ] || [ "$update_figma_token" = "yes" ]; then
+                FIGMA_ACCESS_TOKEN=""  # Clear the token to prompt for a new one
+                print_status "Please provide the new Figma access token..."
+            fi
+        fi
+    fi
+    
+    # Check if token is configured in Claude config file
+    CONFIG_FILE="$HOME/.claude.json"
+    if [ -z "$FIGMA_ACCESS_TOKEN" ] && [ -f "$CONFIG_FILE" ]; then
+        # Check for existing Figma token in global config
+        EXISTING_FIGMA_TOKEN=""
+        if command -v jq &> /dev/null; then
+            # Look for Figma MCP server with different possible names
+            EXISTING_FIGMA_TOKEN=$(jq -r '
+                (.mcpServers."Framelink Figma MCP".args[] | select(startswith("--figma-api-key=")) | sub("--figma-api-key="; "")) // 
+                (.mcpServers."figma".args[] | select(startswith("--figma-api-key=")) | sub("--figma-api-key="; "")) // 
+                (.mcpServers."figma-mcp".args[] | select(startswith("--figma-api-key=")) | sub("--figma-api-key="; "")) // 
+                empty
+            ' "$CONFIG_FILE" 2>/dev/null)
+        fi
+        
+        if [ ! -z "$EXISTING_FIGMA_TOKEN" ] && [ "$EXISTING_FIGMA_TOKEN" != "null" ]; then
+            print_success "Found existing Figma token in Claude config: ${EXISTING_FIGMA_TOKEN:0:8}..."
+            FIGMA_ACCESS_TOKEN="$EXISTING_FIGMA_TOKEN"
+            
+            # Ask if user wants to update the existing token
+            if [ -t 0 ]; then  # Only ask in interactive mode
+                echo ""
+                read -p "Do you want to update this Figma token? (y/n): " update_existing_figma
+                if [ "$update_existing_figma" = "y" ] || [ "$update_existing_figma" = "yes" ]; then
+                    FIGMA_ACCESS_TOKEN=""  # Clear to prompt for new one
+                    print_status "Please provide the new Figma access token..."
+                fi
+            fi
+        fi
+    fi
+    
+    # If no token found or user wants to update, prompt for new token
+    if [ -z "$FIGMA_ACCESS_TOKEN" ]; then
+        # Check if running in a pipe (non-interactive mode)
+        if [ ! -t 0 ]; then
+            print_warning "No Figma token found. Figma MCP integration will be skipped."
+            print_status "To enable Figma integration, set FIGMA_ACCESS_TOKEN environment variable:"
+            echo "export FIGMA_ACCESS_TOKEN=your_figma_token_here"
+            FIGMA_ACCESS_TOKEN=""
+        else
+            # Interactive input
+            echo ""
+            print_status "Figma MCP integration provides access to your Figma designs and components."
+            echo ""
+            read -p "Do you want to configure Figma integration? (y/n): " configure_figma
+            
+            if [ "$configure_figma" = "y" ] || [ "$configure_figma" = "yes" ]; then
+                while [ -z "$FIGMA_ACCESS_TOKEN" ]; do
+                    echo ""
+                    print_status "To create a Figma Personal Access Token:"
+                    echo "1. Go to Figma.com → Settings → Account → Personal access tokens"
+                    echo "2. Click 'Create new token'"
+                    echo "3. Give it a descriptive name (e.g., 'Claude Code MCP')"
+                    echo "4. Copy the generated token"
+                    echo ""
+                    echo "📖 Full instructions: https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens"
+                    echo ""
+                    echo -n "Enter your Figma Personal Access Token (or 'skip' to continue without): "
+                    read -s FIGMA_ACCESS_TOKEN
+                    echo ""
+                    
+                    if [ "$FIGMA_ACCESS_TOKEN" = "skip" ]; then
+                        FIGMA_ACCESS_TOKEN=""
+                        print_warning "Skipping Figma MCP integration"
+                        break
+                    elif [ -z "$FIGMA_ACCESS_TOKEN" ]; then
+                        print_warning "Token is required for Figma MCP integration!"
+                    fi
+                done
+            else
+                print_status "Skipping Figma MCP integration"
+                FIGMA_ACCESS_TOKEN=""
+            fi
+        fi
+    fi
+    
+    if [ ! -z "$FIGMA_ACCESS_TOKEN" ]; then
+        print_success "Figma authentication configured!"
+        print_status "Token: ${FIGMA_ACCESS_TOKEN:0:8}..."
+    fi
+    echo ""
+}
+
+# Install Figma MCP Server
+install_figma() {
+    if [ -z "$FIGMA_ACCESS_TOKEN" ]; then
+        print_status "Skipping Figma MCP server (no token provided)"
+        return 0
+    fi
+    
+    print_status "Installing Figma MCP Server..."
+    
+    # The Figma MCP is installed via npx, so no local installation needed
+    # Just verify npx is available
+    if ! command -v npx &> /dev/null; then
+        print_error "npx is required for Figma MCP but not found!"
+        return 1
+    fi
+    
+    print_success "Figma MCP Server ready for configuration!"
+}
+
+# Helper function to update Figma token in config
+update_figma_token_in_config() {
+    local CONFIG_FILE="$HOME/.claude.json"
+    local TOKEN="$1"
+    
+    if [ ! -f "$CONFIG_FILE" ]; then
+        print_warning "Claude config file not found at $CONFIG_FILE"
+        return 1
+    fi
+    
+    # Create a backup
+    cp "$CONFIG_FILE" "$CONFIG_FILE.backup"
+    
+    # Try jq first (cleanest method)
+    if command -v jq &> /dev/null; then
+        # Update Figma MCP server config
+        if jq --arg token "$TOKEN" \
+           '# Update or create Figma MCP server config
+            .mcpServers."figma" = {
+              "command": "npx",
+              "args": ["-y", "figma-developer-mcp", ("--figma-api-key=" + $token), "--stdio"]
+            }' \
+           "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"; then
+            print_success "Figma token configured using jq!"
+            return 0
+        fi
+    fi
+    
+    # Try Python (more reliable than sed)
+    if command -v python3 &> /dev/null; then
+        cat > /tmp/update_figma_token.py << PYTHON_EOF
+#!/usr/bin/env python3
+import json
+import sys
+
+try:
+    with open('$CONFIG_FILE', 'r') as f:
+        config = json.load(f)
+    
+    # Ensure mcpServers exists
+    if 'mcpServers' not in config:
+        config['mcpServers'] = {}
+    
+    # Add or update Figma MCP server
+    config['mcpServers']['figma'] = {
+        "command": "npx",
+        "args": ["-y", "figma-developer-mcp", "--figma-api-key=$TOKEN", "--stdio"]
+    }
+    
+    with open('$CONFIG_FILE', 'w') as f:
+        json.dump(config, f, indent=2)
+    print("SUCCESS")
+except Exception as e:
+    print(f"ERROR: {e}")
+PYTHON_EOF
+        
+        RESULT=$(python3 /tmp/update_figma_token.py 2>&1)
+        rm -f /tmp/update_figma_token.py
+        
+        if [ "$RESULT" = "SUCCESS" ]; then
+            print_success "Figma token configured using Python!"
+            return 0
+        fi
+    fi
+    
+    print_warning "Could not automatically configure Figma token"
+    return 1
+}
+
+# Updated configure_claude_mcp function (add this after the existing global servers)
+configure_figma_mcp() {
+    if [ -z "$FIGMA_ACCESS_TOKEN" ]; then
+        print_status "Skipping Figma MCP configuration (no token provided)"
+        return 0
+    fi
+    
+    # Configure Figma MCP server (global)
+    if ! claude mcp list 2>/dev/null | grep -q "^figma:"; then
+        print_status "Adding global Figma MCP server..."
+        if claude mcp add "figma" npx -y figma-developer-mcp --figma-api-key="$FIGMA_ACCESS_TOKEN" --stdio; then
+            print_success "Global Figma MCP server added"
+        else
+            print_error "Failed to add Figma MCP server via CLI, trying config file method..."
+            
+            # Fallback: update config file directly
+            if update_figma_token_in_config "$FIGMA_ACCESS_TOKEN"; then
+                print_success "Figma MCP server configured via config file"
+            else
+                print_warning "⚠️  Manual configuration required for Figma MCP"
+                echo ""
+                echo "Please edit ~/.claude.json and add the following to mcpServers:"
+                echo ""
+                echo '  "figma": {'
+                echo '    "command": "npx",'
+                echo '    "args": ["-y", "figma-developer-mcp", "--figma-api-key='$FIGMA_ACCESS_TOKEN'", "--stdio"]'
+                echo '  }'
+                echo ""
+            fi
+        fi
+    else
+        print_success "Global Figma MCP server already configured"
+        
+        # Update token if provided
+        CONFIG_FILE="$HOME/.claude.json"
+        if [ -f "$CONFIG_FILE" ]; then
+            # Check if token needs updating
+            CURRENT_TOKEN=""
+            if command -v jq &> /dev/null; then
+                CURRENT_TOKEN=$(jq -r '.mcpServers.figma.args[] | select(startswith("--figma-api-key=")) | sub("--figma-api-key="; "")' "$CONFIG_FILE" 2>/dev/null)
+            fi
+            
+            if [ "$CURRENT_TOKEN" != "$FIGMA_ACCESS_TOKEN" ]; then
+                print_status "Updating Figma token in existing configuration..."
+                if update_figma_token_in_config "$FIGMA_ACCESS_TOKEN"; then
+                    print_success "Figma token updated successfully!"
+                else
+                    print_warning "Please manually update your Figma token in ~/.claude.json"
+                fi
+            else
+                print_status "Figma token already up to date"
+            fi
+        fi
+    fi
 }
 
 # Check if Claude Code is installed
@@ -675,6 +966,10 @@ configure_claude_mcp() {
             fi
         fi
     fi
+
+    # Add Figma configuration after other global servers
+    configure_figma_mcp
+
     
     # Add global Memory MCP server
     if ! claude mcp list 2>/dev/null | grep -q "^memory:"; then
@@ -783,7 +1078,7 @@ configure_claude_mcp() {
     print_status "MCP Server Configuration Summary:"
     echo ""
     print_status "Global MCP servers (shared across all projects):"
-    claude mcp list | grep -E "^(github|memory|context7|webfetch):" | sed 's/^/  ✅ /' || true
+    claude mcp list | grep -E "^(github|memory|context7|webfetch|figma):" | sed 's/^/  ✅ /' || true
     echo ""
     print_status "Project-specific MCP servers for $PROJECT_NAME:"
     claude mcp list | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | sed 's/^/  ✅ /' || true
@@ -977,13 +1272,22 @@ You have access to the following MCP servers:
 - **Memory**: Remember project decisions and patterns
 - **GitHub**: Manage repository operations
 - **Web Fetch**: Access external resources
+- **Figma**: Access Figma designs, components, and design tokens (if configured)
 
 Use these tools actively to understand the project structure, run commands, and maintain context across sessions.
+
+## Figma Integration
+If Figma is configured, you can:
+- Access design files and components
+- Extract design tokens (colors, typography, spacing)
+- Get component specifications for implementation
+- Sync design system changes with your Laravel/Livewire/Tailwind components
 
 ## Project-Specific Notes
 - Database connection: $DB_CONNECTION
 - Project started: $(date)
 - Initial setup completed with full MCP server configuration
+- Figma integration: Available if token was provided
 
 Remember: Always prioritize Laravel conventions, use the developer's preferred stack (Livewire/Filament/Alpine/Tailwind), and maintain high code quality standards.
 EOF
@@ -1231,6 +1535,9 @@ main() {
     
     install_debugbar_mcp
     cd "$ORIGINAL_DIR"
+
+    install_figma
+    cd "$ORIGINAL_DIR"
     
     # Generate database configuration
     generate_database_config
@@ -1303,7 +1610,7 @@ main() {
     echo ""
     
     # Count successful MCP servers
-    GLOBAL_MCP_COUNT=$(claude mcp list | grep -E "^(github|memory|context7|webfetch):" | wc -l | tr -d ' ')
+    GLOBAL_MCP_COUNT=$(claude mcp list | grep -E "^(github|memory|context7|webfetch|figma):" | wc -l | tr -d ' ')
     PROJECT_MCP_COUNT=$(claude mcp list | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | wc -l | tr -d ' ')
     TOTAL_MCP_COUNT=$(claude mcp list | wc -l | tr -d ' ')
     
