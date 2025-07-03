@@ -321,14 +321,14 @@ update_figma_token_in_config() {
     # Create a backup
     cp "$CONFIG_FILE" "$CONFIG_FILE.backup"
     
-    # Try jq first (cleanest method)
+    # Try jq first (cleanest method) - FIXED: removed -y flag
     if command -v jq &> /dev/null; then
         # Update Figma MCP server config
         if jq --arg token "$TOKEN" \
            '# Update or create Figma MCP server config
             .mcpServers."figma" = {
               "command": "npx",
-              "args": ["-y", "figma-developer-mcp", ("--figma-api-key=" + $token), "--stdio"]
+              "args": ["figma-developer-mcp", ("--figma-api-key=" + $token), "--stdio"]
             }' \
            "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"; then
             print_success "Figma token configured using jq!"
@@ -336,7 +336,7 @@ update_figma_token_in_config() {
         fi
     fi
     
-    # Try Python (more reliable than sed)
+    # Try Python (more reliable than sed) - FIXED: removed -y flag
     if command -v python3 &> /dev/null; then
         cat > /tmp/update_figma_token.py << PYTHON_EOF
 #!/usr/bin/env python3
@@ -351,10 +351,10 @@ try:
     if 'mcpServers' not in config:
         config['mcpServers'] = {}
     
-    # Add or update Figma MCP server
+    # Add or update Figma MCP server (without -y flag)
     config['mcpServers']['figma'] = {
         "command": "npx",
-        "args": ["-y", "figma-developer-mcp", "--figma-api-key=$TOKEN", "--stdio"]
+        "args": ["figma-developer-mcp", "--figma-api-key=$TOKEN", "--stdio"]
     }
     
     with open('$CONFIG_FILE', 'w') as f:
@@ -386,10 +386,11 @@ configure_figma_mcp() {
     
     print_status "Configuring Figma MCP server..."
     
-    # Configure Figma MCP server (global)
+    # Configure Figma MCP server (global) - FIXED command without -y flag
     if ! claude mcp list 2>/dev/null | grep -q "^figma:"; then
         print_status "Adding global Figma MCP server..."
-        if claude mcp add "figma" npx -y figma-developer-mcp --figma-api-key="$FIGMA_ACCESS_TOKEN" --stdio; then
+        # Remove the -y flag that was causing the error
+        if claude mcp add "figma" npx figma-developer-mcp --figma-api-key="$FIGMA_ACCESS_TOKEN" --stdio; then
             print_success "Global Figma MCP server added"
         else
             print_warning "Failed to add Figma MCP server via CLI, trying config file method..."
@@ -400,7 +401,7 @@ configure_figma_mcp() {
             else
                 print_warning "⚠️  Could not configure Figma MCP automatically"
                 print_status "You can configure it manually later by running:"
-                echo "  claude mcp add figma npx -y figma-developer-mcp --figma-api-key=YOUR_TOKEN --stdio"
+                echo "  claude mcp add figma npx figma-developer-mcp --figma-api-key=YOUR_TOKEN --stdio"
                 return 0  # Don't fail the entire installation
             fi
         fi
