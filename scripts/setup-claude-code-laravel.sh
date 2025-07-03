@@ -3,7 +3,7 @@
 # Laravel Claude Code Setup Script
 # Automatically configures Claude Code with MCP servers for Laravel development
 # Author: Laravel Developer
-# Version: 1.9.9 - Fixed GitHub token configuration in project-specific MCP servers
+# Version: 2.0 - Figma integration added
 
 set -e  # Exit on any error
 
@@ -1493,7 +1493,7 @@ EOF
 # Main installation function
 main() {
         echo "======================================"
-    echo "Laravel Claude Code Setup Script v1.9"
+    echo "Laravel Claude Code Setup Script v2.0"
     echo "======================================"
     echo ""
     
