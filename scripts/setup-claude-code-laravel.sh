@@ -49,27 +49,36 @@ check_laravel_project() {
 
 
 
-# Better interactive mode detection
-is_interactive() {
-    # Check if stdin is a terminal
-    if [ -t 0 ]; then
-        # Additional checks for common non-interactive environments
-        if [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ] || [ -n "$JENKINS_URL" ]; then
-            return 1  # CI/CD environment
-        fi
-        
-        # Check if we can actually interact with the terminal
-        if command -v tty >/dev/null 2>&1; then
-            if tty -s 2>/dev/null; then
-                return 0  # Interactive
+# Better interactive detection that handles curl pipe correctly
+can_interact_with_user() {
+    # Check if we have a controlling terminal (even if stdin is piped)
+    if [ -t 1 ] && [ -t 2 ]; then
+        # stdout and stderr are terminals
+        # Check if we're NOT in a true non-interactive environment
+        if [ -z "$CI" ] && [ -z "$GITHUB_ACTIONS" ] && [ -z "$JENKINS_URL" ]; then
+            # Try to access the controlling terminal directly
+            if [ -e /dev/tty ]; then
+                return 0  # We can interact with the user
             fi
         fi
-        
-        # Fallback: if stdin is a terminal, assume interactive
-        return 0
     fi
     
-    return 1  # Not interactive
+    return 1  # Cannot interact with user
+}
+
+# Helper function to read input from controlling terminal
+read_from_user() {
+    local prompt="$1"
+    local variable_name="$2"
+    
+    if can_interact_with_user; then
+        # Read from controlling terminal instead of stdin
+        printf "%s" "$prompt" > /dev/tty
+        read -r "$variable_name" < /dev/tty
+        return 0
+    else
+        return 1
+    fi
 }
 
 # Check GitHub authentication and collect tokens if needed
@@ -82,13 +91,11 @@ collect_tokens() {
         print_success "Using GITHUB_TOKEN from environment: ${GITHUB_TOKEN:0:8}..."
         GITHUB_AUTH_METHOD="token"
         
-        # ALWAYS ask in what appears to be interactive mode
-        if [ -t 0 ]; then
+        # Ask if user wants to update token
+        if can_interact_with_user; then
             echo ""
-            printf "Do you want to update this GitHub token? (y/n): "
-            
-            # Try to read with timeout
-            if read -r update_token; then
+            local update_token
+            if read_from_user "Do you want to update this GitHub token? (y/n): " update_token; then
                 if [ "$update_token" = "y" ] || [ "$update_token" = "yes" ]; then
                     GITHUB_TOKEN=""  # Clear the token to prompt for a new one
                     print_status "Please provide the new GitHub token..."
@@ -96,10 +103,10 @@ collect_tokens() {
                     print_status "Keeping existing GitHub token"
                 fi
             else
-                print_status "No input received - keeping existing token"
+                print_status "Could not read input - keeping existing token"
             fi
         else
-            print_status "Non-interactive mode detected - keeping existing GitHub token"
+            print_status "Non-interactive environment - keeping existing GitHub token"
         fi
     fi
     
@@ -117,12 +124,11 @@ collect_tokens() {
             GITHUB_TOKEN="$EXISTING_TOKEN"
             GITHUB_AUTH_METHOD="token"
             
-            # ALWAYS ask in what appears to be interactive mode
-            if [ -t 0 ]; then
+            # Ask if user wants to update token
+            if can_interact_with_user; then
                 echo ""
-                printf "Do you want to update this GitHub token? (y/n): "
-                
-                if read -r update_existing; then
+                local update_existing
+                if read_from_user "Do you want to update this GitHub token? (y/n): " update_existing; then
                     if [ "$update_existing" = "y" ] || [ "$update_existing" = "yes" ]; then
                         GITHUB_TOKEN=""  # Clear to prompt for new one
                         print_status "Please provide the new GitHub token..."
@@ -130,16 +136,16 @@ collect_tokens() {
                         print_status "Keeping existing GitHub token"
                     fi
                 else
-                    print_status "No input received - keeping existing token"
+                    print_status "Could not read input - keeping existing token"
                 fi
             else
-                print_status "Non-interactive mode detected - keeping existing GitHub token"
+                print_status "Non-interactive environment - keeping existing GitHub token"
             fi
         fi
     fi
     
-    # Rest of GitHub logic stays the same...
-    # [GitHub SSH detection and token collection logic]
+    # Continue with GitHub SSH detection logic...
+    # [Rest of GitHub token logic stays the same]
     
     if [ "$GITHUB_AUTH_METHOD" != "none" ]; then
         print_success "GitHub authentication configured!"
@@ -156,6 +162,7 @@ collect_tokens() {
     collect_figma_token
 }
 
+
 # Collect Figma API token
 collect_figma_token() {
     print_status "Checking Figma API configuration..."
@@ -165,12 +172,11 @@ collect_figma_token() {
     if [ -n "$FIGMA_ACCESS_TOKEN" ]; then
         print_success "Using FIGMA_ACCESS_TOKEN from environment: ${FIGMA_ACCESS_TOKEN:0:8}..."
         
-        # ALWAYS ask in what appears to be interactive mode
-        if [ -t 0 ]; then
+        # Ask if user wants to update token
+        if can_interact_with_user; then
             echo ""
-            printf "Do you want to update this Figma token? (y/n): "
-            
-            if read -r update_figma_token; then
+            local update_figma_token
+            if read_from_user "Do you want to update this Figma token? (y/n): " update_figma_token; then
                 if [ "$update_figma_token" = "y" ] || [ "$update_figma_token" = "yes" ]; then
                     FIGMA_ACCESS_TOKEN=""  # Clear the token to prompt for a new one
                     print_status "Please provide the new Figma access token..."
@@ -179,11 +185,11 @@ collect_figma_token() {
                     return 0
                 fi
             else
-                print_status "No input received - keeping existing token"
+                print_status "Could not read input - keeping existing token"
                 return 0
             fi
         else
-            print_status "Non-interactive mode detected - keeping existing Figma token"
+            print_status "Non-interactive environment - keeping existing Figma token"
             return 0
         fi
     fi
@@ -203,12 +209,11 @@ collect_figma_token() {
             print_success "Found existing Figma token in Claude config: ${EXISTING_FIGMA_TOKEN:0:8}..."
             FIGMA_ACCESS_TOKEN="$EXISTING_FIGMA_TOKEN"
             
-            # ALWAYS ask in what appears to be interactive mode
-            if [ -t 0 ]; then
+            # Ask if user wants to update token
+            if can_interact_with_user; then
                 echo ""
-                printf "Do you want to update this Figma token? (y/n): "
-                
-                if read -r update_existing_figma; then
+                local update_existing_figma
+                if read_from_user "Do you want to update this Figma token? (y/n): " update_existing_figma; then
                     if [ "$update_existing_figma" = "y" ] || [ "$update_existing_figma" = "yes" ]; then
                         FIGMA_ACCESS_TOKEN=""  # Clear to prompt for new one
                         print_status "Please provide the new Figma access token..."
@@ -217,25 +222,25 @@ collect_figma_token() {
                         return 0
                     fi
                 else
-                    print_status "No input received - keeping existing token"
+                    print_status "Could not read input - keeping existing token"
                     return 0
                 fi
             else
-                print_status "Non-interactive mode detected - keeping existing Figma token"
+                print_status "Non-interactive environment - keeping existing Figma token"
                 return 0
             fi
         fi
     fi
     
-    # If no token found, ALWAYS ask about configuration if stdin is a terminal
+    # If no token found, ask about configuration
     if [ -z "$FIGMA_ACCESS_TOKEN" ]; then
-        if [ -t 0 ]; then
+        if can_interact_with_user; then
             # Ask if user wants to configure Figma
             echo ""
             print_status "Figma MCP integration provides access to your Figma designs and components."
-            printf "Do you want to configure Figma integration? (y/n): "
             
-            if read -r configure_figma; then
+            local configure_figma
+            if read_from_user "Do you want to configure Figma integration? (y/n): " configure_figma; then
                 if [ "$configure_figma" = "y" ] || [ "$configure_figma" = "yes" ]; then
                     echo ""
                     print_status "To create a Figma Personal Access Token:"
@@ -245,16 +250,17 @@ collect_figma_token() {
                     echo "4. Copy the generated token"
                     echo ""
                     
-                    printf "Enter your Figma Personal Access Token (or 'skip'): "
-                    if read -r FIGMA_ACCESS_TOKEN; then
-                        if [ "$FIGMA_ACCESS_TOKEN" = "skip" ] || [ -z "$FIGMA_ACCESS_TOKEN" ]; then
+                    local figma_token
+                    if read_from_user "Enter your Figma Personal Access Token (or 'skip'): " figma_token; then
+                        if [ "$figma_token" = "skip" ] || [ -z "$figma_token" ]; then
                             FIGMA_ACCESS_TOKEN=""
                             print_status "Skipping Figma integration"
                         else
+                            FIGMA_ACCESS_TOKEN="$figma_token"
                             print_success "Figma token configured!"
                         fi
                     else
-                        print_status "No input received - skipping Figma integration"
+                        print_status "Could not read input - skipping Figma integration"
                         FIGMA_ACCESS_TOKEN=""
                     fi
                 else
@@ -262,12 +268,13 @@ collect_figma_token() {
                     FIGMA_ACCESS_TOKEN=""
                 fi
             else
-                print_status "No input received - skipping Figma integration"
+                print_status "Could not read input - skipping Figma integration"
                 FIGMA_ACCESS_TOKEN=""
             fi
         else
-            print_status "Non-interactive mode detected - skipping Figma configuration"
+            print_status "Non-interactive environment - skipping Figma configuration"
             print_status "To enable Figma integration later, set FIGMA_ACCESS_TOKEN environment variable"
+            FIGMA_ACCESS_TOKEN=""
         fi
     fi
     
