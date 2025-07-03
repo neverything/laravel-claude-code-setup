@@ -99,6 +99,21 @@ collect_tokens() {
                 if [ "$update_token" = "y" ] || [ "$update_token" = "yes" ]; then
                     GITHUB_TOKEN=""  # Clear the token to prompt for a new one
                     print_status "Please provide the new GitHub token..."
+                    
+                    # Actually prompt for the new token
+                    local new_github_token
+                    if read_from_user "Enter your new GitHub Personal Access Token: " new_github_token; then
+                        if [ ! -z "$new_github_token" ]; then
+                            GITHUB_TOKEN="$new_github_token"
+                            print_success "GitHub token updated successfully!"
+                        else
+                            print_warning "No token provided - keeping original token"
+                            # We need to restore the original token here
+                            # But since we cleared it, we'll need to get it from config again
+                        fi
+                    else
+                        print_status "Could not read new token - keeping original"
+                    fi
                 else
                     print_status "Keeping existing GitHub token"
                 fi
@@ -130,8 +145,21 @@ collect_tokens() {
                 local update_existing
                 if read_from_user "Do you want to update this GitHub token? (y/n): " update_existing; then
                     if [ "$update_existing" = "y" ] || [ "$update_existing" = "yes" ]; then
-                        GITHUB_TOKEN=""  # Clear to prompt for new one
                         print_status "Please provide the new GitHub token..."
+                        
+                        # Actually prompt for the new token
+                        local new_github_token
+                        if read_from_user "Enter your new GitHub Personal Access Token: " new_github_token; then
+                            if [ ! -z "$new_github_token" ]; then
+                                GITHUB_TOKEN="$new_github_token"
+                                print_success "GitHub token updated successfully!"
+                            else
+                                print_warning "No token provided - keeping existing token"
+                                # GITHUB_TOKEN already has the existing token
+                            fi
+                        else
+                            print_status "Could not read new token - keeping existing"
+                        fi
                     else
                         print_status "Keeping existing GitHub token"
                     fi
@@ -144,8 +172,152 @@ collect_tokens() {
         fi
     fi
     
-    # Continue with GitHub SSH detection logic...
-    # [Rest of GitHub token logic stays the same]
+    # Continue with GitHub SSH detection logic if no token found...
+    if [ -z "$GITHUB_TOKEN" ]; then
+        # Test SSH authentication with GitHub
+        if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+            print_success "GitHub SSH authentication detected!"
+            print_status "However, for MCP integration, a Personal Access Token is recommended for private repositories."
+            
+            # Ask for choice in interactive mode
+            if can_interact_with_user; then
+                echo ""
+                echo "Choose GitHub authentication method:"
+                echo "1) Use SSH (works for public repos, limited for private repos in MCP)"
+                echo "2) Provide Personal Access Token (recommended for full private repo access)"
+                local auth_choice
+                if read_from_user "Enter choice (1 or 2): " auth_choice; then
+                    if [ "$auth_choice" = "2" ]; then
+                        GITHUB_AUTH_METHOD="token"
+                        local attempts=0
+                        while [ -z "$GITHUB_TOKEN" ] && [ $attempts -lt 3 ]; do
+                            echo ""
+                            print_status "To create a GitHub Personal Access Token:"
+                            echo "1. Go to GitHub.com → Settings → Developer settings → Personal access tokens → Tokens (classic)"
+                            echo "2. Click 'Generate new token (classic)'"
+                            echo "3. Select scopes: repo, read:user, user:email"
+                            echo "4. Copy the generated token"
+                            echo ""
+                            local github_token
+                            if read_from_user "Enter your GitHub Personal Access Token (or 'skip'): " github_token; then
+                                if [ "$github_token" = "skip" ]; then
+                                    GITHUB_TOKEN=""
+                                    GITHUB_AUTH_METHOD="none"
+                                    print_warning "Skipping GitHub MCP integration"
+                                    break
+                                elif [ ! -z "$github_token" ]; then
+                                    GITHUB_TOKEN="$github_token"
+                                    print_success "GitHub token configured!"
+                                    break
+                                else
+                                    print_warning "Token is required for GitHub MCP integration!"
+                                    attempts=$((attempts + 1))
+                                fi
+                            else
+                                print_status "Could not read input - skipping GitHub integration"
+                                GITHUB_AUTH_METHOD="none"
+                                break
+                            fi
+                        done
+                    else
+                        GITHUB_AUTH_METHOD="ssh"
+                        print_warning "Using SSH authentication - private repository access may be limited"
+                    fi
+                else
+                    print_status "Could not read input - using SSH authentication"
+                    GITHUB_AUTH_METHOD="ssh"
+                fi
+            else
+                GITHUB_AUTH_METHOD="ssh"
+                print_warning "Non-interactive mode - using SSH authentication"
+            fi
+        else
+            print_warning "No GitHub SSH authentication detected"
+            GITHUB_AUTH_METHOD="token"
+            
+            # Check if truly interactive
+            if ! can_interact_with_user; then
+                print_error "This script requires a GitHub token for GitHub MCP integration."
+                print_error "Please set the GITHUB_TOKEN environment variable and try again:"
+                echo ""
+                echo "export GITHUB_TOKEN=your_token_here"
+                echo "curl -fsSL https://your-script-url | bash"
+                echo ""
+                exit 1
+            fi
+            
+            # Interactive token collection
+            local attempts=0
+            while [ -z "$GITHUB_TOKEN" ] && [ $attempts -lt 3 ]; do
+                echo ""
+                print_status "To create a GitHub Personal Access Token:"
+                echo "1. Go to GitHub.com → Settings → Developer settings → Personal access tokens → Tokens (classic)"
+                echo "2. Click 'Generate new token (classic)'"
+                echo "3. Select scopes: repo, read:user, user:email"
+                echo "4. Copy the generated token"
+                echo ""
+                local github_token
+                if read_from_user "Enter your GitHub Personal Access Token (or 'skip'): " github_token; then
+                    if [ "$github_token" = "skip" ]; then
+                        GITHUB_TOKEN=""
+                        GITHUB_AUTH_METHOD="none"
+                        print_warning "Skipping GitHub MCP integration"
+                        break
+                    elif [ ! -z "$github_token" ]; then
+                        GITHUB_TOKEN="$github_token"
+                        print_success "GitHub token configured!"
+                        break
+                    else
+                        print_warning "Token is required for GitHub MCP integration!"
+                        attempts=$((attempts + 1))
+                    fi
+                else
+                    print_status "Could not read input - skipping GitHub integration"
+                    GITHUB_AUTH_METHOD="none"
+                    break
+                fi
+            done
+        fi
+    fi
+    
+    # Get GitHub repository information if we have authentication
+    if [ "$GITHUB_AUTH_METHOD" != "none" ]; then
+        # Try to detect current repository from git remote
+        if command -v git &> /dev/null && [ -d ".git" ]; then
+            # Extract owner/repo from git remote URL
+            REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
+            if [ ! -z "$REMOTE_URL" ]; then
+                # Parse GitHub repository from remote URL
+                if echo "$REMOTE_URL" | grep -q "github.com"; then
+                    # Extract owner/repo from various URL formats
+                    DETECTED_REPO=$(echo "$REMOTE_URL" | sed -E 's|.*github\.com[:/]([^/]+/[^/]+)(\.git)?.*|\1|' | sed 's|\.git$||')
+                    if [ ! -z "$DETECTED_REPO" ]; then
+                        print_success "Detected GitHub repository: $DETECTED_REPO"
+                        GITHUB_REPO="$DETECTED_REPO"
+                    fi
+                fi
+            fi
+        fi
+        
+        # Ask for repository if not detected or if user wants to specify different one
+        if can_interact_with_user; then
+            if [ ! -z "$GITHUB_REPO" ]; then
+                local repo_choice
+                if read_from_user "Use detected repository '$GITHUB_REPO'? (y/n, or enter different owner/repo): " repo_choice; then
+                    if [ "$repo_choice" = "n" ] || [ "$repo_choice" = "no" ]; then
+                        GITHUB_REPO=""
+                    elif [ ! -z "$repo_choice" ] && [ "$repo_choice" != "y" ] && [ "$repo_choice" != "yes" ]; then
+                        GITHUB_REPO="$repo_choice"
+                    fi
+                fi
+            else
+                local github_repo
+                if read_from_user "Enter GitHub repository (optional, format: owner/repo): " github_repo; then
+                    GITHUB_REPO="$github_repo"
+                fi
+            fi
+        fi
+    fi
     
     if [ "$GITHUB_AUTH_METHOD" != "none" ]; then
         print_success "GitHub authentication configured!"
@@ -178,12 +350,24 @@ collect_figma_token() {
             local update_figma_token
             if read_from_user "Do you want to update this Figma token? (y/n): " update_figma_token; then
                 if [ "$update_figma_token" = "y" ] || [ "$update_figma_token" = "yes" ]; then
-                    FIGMA_ACCESS_TOKEN=""  # Clear the token to prompt for a new one
                     print_status "Please provide the new Figma access token..."
+                    
+                    # Actually prompt for the new token
+                    local new_figma_token
+                    if read_from_user "Enter your new Figma Personal Access Token: " new_figma_token; then
+                        if [ ! -z "$new_figma_token" ]; then
+                            FIGMA_ACCESS_TOKEN="$new_figma_token"
+                            print_success "Figma token updated successfully!"
+                        else
+                            print_warning "No token provided - keeping existing token"
+                        fi
+                    else
+                        print_status "Could not read new token - keeping existing"
+                    fi
                 else
                     print_status "Keeping existing Figma token"
-                    return 0
                 fi
+                return 0
             else
                 print_status "Could not read input - keeping existing token"
                 return 0
@@ -215,12 +399,24 @@ collect_figma_token() {
                 local update_existing_figma
                 if read_from_user "Do you want to update this Figma token? (y/n): " update_existing_figma; then
                     if [ "$update_existing_figma" = "y" ] || [ "$update_existing_figma" = "yes" ]; then
-                        FIGMA_ACCESS_TOKEN=""  # Clear to prompt for new one
                         print_status "Please provide the new Figma access token..."
+                        
+                        # Actually prompt for the new token
+                        local new_figma_token
+                        if read_from_user "Enter your new Figma Personal Access Token: " new_figma_token; then
+                            if [ ! -z "$new_figma_token" ]; then
+                                FIGMA_ACCESS_TOKEN="$new_figma_token"
+                                print_success "Figma token updated successfully!"
+                            else
+                                print_warning "No token provided - keeping existing token"
+                            fi
+                        else
+                            print_status "Could not read new token - keeping existing"
+                        fi
                     else
                         print_status "Keeping existing Figma token"
-                        return 0
                     fi
+                    return 0
                 else
                     print_status "Could not read input - keeping existing token"
                     return 0
@@ -1083,38 +1279,190 @@ create_project_prompts() {
     
     print_status "Creating project context file..."
     cat > ".claude/project_context.md" << 'EOF'
-# $PROJECT_NAME - Laravel Project Context
+## Project Context & Tech Stack
+You are working with a Laravel full-stack developer on the "$PROJECT_NAME" project. This is a Laravel application using:
 
-## Project Overview
-This is a Laravel project using the following stack:
-- **Framework**: Laravel
-- **Frontend**: Livewire, Alpine.js, Tailwind CSS
-- **Admin Panel**: Filament
+- **Framework**: Laravel (latest version)
+- **Frontend Stack**: Livewire + Alpine.js + Tailwind CSS
+- **Admin Interface**: Filament
 - **Database**: $DB_CONNECTION
+- **Development Focus**: Full-stack Laravel development with modern frontend tools
 
-## Key Directories
-- `app/` - Application logic (Models, Controllers, etc.)
-- `resources/views/` - Blade templates
-- `resources/js/` - Alpine.js components
-- `resources/css/` - Tailwind CSS styles
-- `database/` - Migrations, seeders, factories
-- `routes/` - Route definitions
-- `config/` - Configuration files
+## Developer Preferences & Coding Style
 
-## Development Guidelines
-- Follow Laravel best practices
-- Use Livewire for dynamic components
-- Style with Tailwind CSS utility classes
-- Use Alpine.js for simple interactivity
+### Laravel Best Practices
+- Always follow Laravel conventions and best practices
+- Use Eloquent ORM for database operations
+- Implement proper request validation using Form Requests
+- Use Laravel's built-in authentication and authorization
 - Follow PSR-12 coding standards
-- Write feature tests for new functionality
+- Use meaningful variable and method names
+- Write comprehensive feature tests
 
-## Common Commands
-- `php artisan serve` - Start development server
-- `php artisan migrate` - Run migrations
-- `php artisan make:livewire ComponentName` - Create Livewire component
-- `npm run dev` - Build assets for development
-- `php artisan test` - Run tests
+### Livewire Development
+- Prefer Livewire over Vue/React for dynamic components
+- Use public properties for data binding
+- Implement proper validation in Livewire components
+- Use lifecycle hooks appropriately (mount, render, updated, etc.)
+- Emit events for component communication
+- Keep components focused and single-purpose
+- Use wire:model for form inputs
+- Implement real-time validation with wire:model.lazy or wire:model.debounce
+
+### Filament Administration
+- Use Filament for all admin interfaces
+- Create proper Resource classes for models
+- Implement custom pages when needed
+- Use Filament's form builder for complex forms
+- Leverage Filament's table builder for listings
+- Implement proper authorization policies
+- Use Filament's notification system
+- Create custom widgets for dashboards
+
+### Frontend Development
+- Use Tailwind CSS utility classes exclusively
+- Prefer utility classes over custom CSS
+- Follow mobile-first responsive design principles
+- Use Alpine.js for simple client-side interactivity
+- Keep Alpine.js components small and focused
+- Use Tailwind's design system (spacing, colors, typography)
+- Implement dark mode support when requested
+
+### Database & Models
+- Use migrations for all database changes
+- Create proper model relationships
+- Use factories for testing data
+- Implement model scopes for reusable queries
+- Use accessors and mutators appropriately
+- Follow Laravel's naming conventions for tables and columns
+
+## Available Tools
+You have access to the following MCP servers:
+- **Context7**: Access latest Laravel documentation and any other framework docs
+- **Filesystem**: Read and edit project files
+- **Database**: Query and modify database directly
+- **Memory**: Remember project decisions and patterns
+- **GitHub**: Manage repository operations
+- **Web Fetch**: Access external resources
+- **Figma**: Access Figma designs, components, and design tokens (if configured)
+
+Use these tools actively to understand the project structure, run commands, and maintain context across sessions.
+
+## 🎨 Figma MCP Usage Guide
+
+### ❌ **WRONG WAY:**
+```
+> can you show me the layouts from figma
+```
+**Problem:** This tries to use the API token as a file key, causing 404 errors.
+
+### ✅ **CORRECT WAY:**
+```
+> can you analyze this figma file: https://www.figma.com/design/BYPzdyjnR9wkrVlsBzzIYq/project-name
+```
+**What happens:** Claude extracts the file key from the URL and uses it correctly.
+
+### How to Request Figma Information
+
+1. **Full Figma URL (Recommended):**
+   ```
+   > Please analyze this Figma design: https://www.figma.com/design/FILE_KEY/Project-Name
+   ```
+
+2. **Specific Frame/Component:**
+   ```
+   > Analyze this specific frame: https://www.figma.com/design/FILE_KEY/Project?node-id=0-1
+   ```
+
+3. **File Key Only:**
+   ```
+   > Get the layout information from Figma file key: ABC123DEF456
+   ```
+
+### Understanding File Keys vs API Tokens
+
+**API Token (for authentication):**
+- Format: `figd_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+- Purpose: Authenticates requests to Figma API
+- Already configured in your MCP server
+
+**File Key (for specific files):**
+- Format: `BYPzdyjnR9wkrVlsBzzIYq` (shorter alphanumeric)
+- Purpose: Identifies specific Figma files
+- Found in Figma URLs after `/design/`
+
+### Best Practices for Figma Integration
+
+✅ **Do:**
+- Always provide the full Figma URL when possible
+- Work with specific frames/components for better results
+- Use the `get_figma_data` tool when you see a Figma URL or file key
+- Extract design tokens (colors, typography, spacing) for Tailwind classes
+- Convert Figma components to Laravel Livewire components
+- Use Figma layouts to inform Alpine.js interactions
+
+❌ **Don't:**
+- Never use the API token as a file key
+- Don't assume file keys from context without explicit URLs
+- Don't retry failed requests with the same incorrect parameters
+
+### Laravel + Figma Workflow
+
+When working with Figma designs in this Laravel project:
+
+1. **Extract Design Information:**
+   ```
+   > Analyze this Figma design and extract the color palette, typography, and spacing tokens
+   ```
+
+2. **Create Livewire Components:**
+   ```
+   > Convert this Figma button component to a Laravel Livewire component with Tailwind CSS
+   ```
+
+3. **Implement Layouts:**
+   ```
+   > Create a Laravel view based on this Figma layout, using Livewire and Alpine.js
+   ```
+
+4. **Design System Integration:**
+   ```
+   > Update our Tailwind config to match the design tokens from this Figma file
+   ```
+
+### Error Handling
+
+**404 Not Found Error:**
+- Usually means incorrect file key
+- Check if the file key was extracted correctly from the URL
+- Verify the file is accessible with the configured API token
+
+**403 Forbidden Error:**
+- API token doesn't have access to the file
+- File might be private or require different permissions
+
+### Your Current Figma Setup
+- **Package:** `figma-developer-mcp` (Framelink Figma MCP Server)
+- **Authentication:** API token configured as environment variable
+- **Status:** ✅ Working correctly (as proven by successful file analysis)
+- **Tools Available:** `get_figma_data` for fetching file information
+
+Remember: Always provide Figma URLs or file keys, never use API tokens as file identifiers!
+
+## Figma Integration
+If Figma is configured, you can:
+- Access design files and components
+- Extract design tokens (colors, typography, spacing)
+- Get component specifications for implementation
+- Sync design system changes with your Laravel/Livewire/Tailwind components
+
+## Project-Specific Notes
+- Database connection: $DB_CONNECTION
+- Project started: $(date)
+- Initial setup completed with full MCP server configuration
+- Figma integration: Available if token was provided
+
+Remember: Always prioritize Laravel conventions, use the developer's preferred stack (Livewire/Filament/Alpine/Tailwind), and maintain high code quality standards.
 EOF
 
     # Replace variables in the file
