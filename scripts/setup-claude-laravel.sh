@@ -233,21 +233,27 @@ collect_figma_token() {
     print_status "Checking Figma API configuration..."
     echo ""
     
+    # Add error handling wrapper
+    set +e  # Don't exit on errors in this function
+    
     # Check if FIGMA_ACCESS_TOKEN is already set in environment
     if [ -n "$FIGMA_ACCESS_TOKEN" ]; then
         print_success "Using FIGMA_ACCESS_TOKEN from environment: ${FIGMA_ACCESS_TOKEN:0:8}..."
         
-        # ALWAYS ask if user wants to update the token in interactive mode
+        # Only ask in interactive mode and with proper error handling
         if [ -t 0 ]; then
             echo ""
-            read -p "Do you want to update this Figma token? (y/n): " update_figma_token
+            printf "Do you want to update this Figma token? (y/n): "
+            read -r update_figma_token
             if [ "$update_figma_token" = "y" ] || [ "$update_figma_token" = "yes" ]; then
                 FIGMA_ACCESS_TOKEN=""  # Clear the token to prompt for a new one
                 print_status "Please provide the new Figma access token..."
             else
+                set -e  # Re-enable exit on error
                 return 0  # Keep existing token and exit function
             fi
         else
+            set -e  # Re-enable exit on error
             return 0  # Keep existing token and exit function
         fi
     fi
@@ -264,24 +270,27 @@ collect_figma_token() {
                 (.mcpServers."figma".args[] | select(startswith("--figma-api-key=")) | sub("--figma-api-key="; "")) // 
                 (.mcpServers."figma-mcp".args[] | select(startswith("--figma-api-key=")) | sub("--figma-api-key="; "")) // 
                 empty
-            ' "$CONFIG_FILE" 2>/dev/null)
+            ' "$CONFIG_FILE" 2>/dev/null || echo "")
         fi
         
-        if [ ! -z "$EXISTING_FIGMA_TOKEN" ] && [ "$EXISTING_FIGMA_TOKEN" != "null" ]; then
+        if [ ! -z "$EXISTING_FIGMA_TOKEN" ] && [ "$EXISTING_FIGMA_TOKEN" != "null" ] && [ "$EXISTING_FIGMA_TOKEN" != "empty" ]; then
             print_success "Found existing Figma token in Claude config: ${EXISTING_FIGMA_TOKEN:0:8}..."
             FIGMA_ACCESS_TOKEN="$EXISTING_FIGMA_TOKEN"
             
-            # ALWAYS ask if user wants to update the existing token in interactive mode
+            # Only ask in interactive mode with proper error handling
             if [ -t 0 ]; then
                 echo ""
-                read -p "Do you want to update this Figma token? (y/n): " update_existing_figma
+                printf "Do you want to update this Figma token? (y/n): "
+                read -r update_existing_figma
                 if [ "$update_existing_figma" = "y" ] || [ "$update_existing_figma" = "yes" ]; then
                     FIGMA_ACCESS_TOKEN=""  # Clear to prompt for new one
                     print_status "Please provide the new Figma access token..."
                 else
+                    set -e  # Re-enable exit on error
                     return 0  # Keep existing token and exit function
                 fi
             else
+                set -e  # Re-enable exit on error
                 return 0  # Keep existing token and exit function
             fi
         fi
@@ -294,18 +303,25 @@ collect_figma_token() {
             print_status "Non-interactive mode detected. Skipping Figma configuration."
             print_status "To enable Figma integration later, set FIGMA_ACCESS_TOKEN environment variable"
             FIGMA_ACCESS_TOKEN=""
+            set -e  # Re-enable exit on error
             return 0  # Exit function successfully
         fi
         
-        # Interactive input - ALWAYS ask if user wants to configure Figma
+        # Interactive input - Ask if user wants to configure Figma
         echo ""
         print_status "Figma MCP integration provides access to your Figma designs and components."
         print_status "This allows Claude to read your design files, extract design tokens, and help implement designs."
         echo ""
-        read -p "Do you want to configure Figma integration? (y/n): " configure_figma
+        
+        # Use printf instead of echo -n for better compatibility
+        printf "Do you want to configure Figma integration? (y/n): "
+        read -r configure_figma
         
         if [ "$configure_figma" = "y" ] || [ "$configure_figma" = "yes" ]; then
-            while [ -z "$FIGMA_ACCESS_TOKEN" ]; do
+            local attempts=0
+            local max_attempts=3
+            
+            while [ -z "$FIGMA_ACCESS_TOKEN" ] && [ $attempts -lt $max_attempts ]; do
                 echo ""
                 print_status "To create a Figma Personal Access Token:"
                 echo "1. Go to Figma.com → Settings → Account → Personal access tokens"
@@ -315,21 +331,30 @@ collect_figma_token() {
                 echo ""
                 echo "📖 Full instructions: https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens"
                 echo ""
-                echo -n "Enter your Figma Personal Access Token (or 'skip' to continue without): "
-                read -s FIGMA_ACCESS_TOKEN
-                echo ""
+                
+                printf "Enter your Figma Personal Access Token (or 'skip' to continue without): "
+                read -r FIGMA_ACCESS_TOKEN
                 
                 if [ "$FIGMA_ACCESS_TOKEN" = "skip" ]; then
                     FIGMA_ACCESS_TOKEN=""
                     print_status "Skipping Figma MCP integration"
+                    set -e  # Re-enable exit on error
                     return 0
                 elif [ -z "$FIGMA_ACCESS_TOKEN" ]; then
                     print_warning "Token is required for Figma MCP integration!"
+                    attempts=$((attempts + 1))
+                    if [ $attempts -ge $max_attempts ]; then
+                        print_warning "Max attempts reached. Skipping Figma integration."
+                        FIGMA_ACCESS_TOKEN=""
+                        set -e  # Re-enable exit on error
+                        return 0
+                    fi
                 fi
             done
         else
             print_status "Skipping Figma MCP integration"
             FIGMA_ACCESS_TOKEN=""
+            set -e  # Re-enable exit on error
             return 0
         fi
     fi
@@ -340,6 +365,7 @@ collect_figma_token() {
     fi
     echo ""
     
+    set -e  # Re-enable exit on error
     return 0
 }
 
