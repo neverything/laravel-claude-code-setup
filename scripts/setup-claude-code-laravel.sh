@@ -57,8 +57,8 @@ collect_tokens() {
         print_success "Using GITHUB_TOKEN from environment: ${GITHUB_TOKEN:0:8}..."
         GITHUB_AUTH_METHOD="token"
         
-        # Ask if user wants to update the token
-        if [ -t 0 ]; then  # Only ask in interactive mode
+        # ALWAYS ask if user wants to update the token in interactive mode
+        if [ -t 0 ]; then
             echo ""
             read -p "Do you want to update this GitHub token? (y/n): " update_token
             if [ "$update_token" = "y" ] || [ "$update_token" = "yes" ]; then
@@ -82,8 +82,8 @@ collect_tokens() {
             GITHUB_TOKEN="$EXISTING_TOKEN"
             GITHUB_AUTH_METHOD="token"
             
-            # Ask if user wants to update the existing token
-            if [ -t 0 ]; then  # Only ask in interactive mode
+            # ALWAYS ask if user wants to update the existing token in interactive mode
+            if [ -t 0 ]; then
                 echo ""
                 read -p "Do you want to update this GitHub token? (y/n): " update_existing
                 if [ "$update_existing" = "y" ] || [ "$update_existing" = "yes" ]; then
@@ -224,14 +224,8 @@ collect_tokens() {
     fi
     echo ""
 
-    # Only call Figma collection in interactive mode or if token is already set
-    if [ -t 0 ] || [ -n "$FIGMA_ACCESS_TOKEN" ]; then
-        collect_figma_token
-    else
-        print_status "Skipping Figma configuration in non-interactive mode"
-        print_status "To enable Figma later, set FIGMA_ACCESS_TOKEN environment variable"
-        FIGMA_ACCESS_TOKEN=""
-    fi
+    # Always call Figma collection, but it will handle interactive/non-interactive modes internally
+    collect_figma_token
 }
 
 # Collect Figma API token
@@ -243,7 +237,7 @@ collect_figma_token() {
     if [ -n "$FIGMA_ACCESS_TOKEN" ]; then
         print_success "Using FIGMA_ACCESS_TOKEN from environment: ${FIGMA_ACCESS_TOKEN:0:8}..."
         
-        # Ask if user wants to update the token (only in interactive mode)
+        # ALWAYS ask if user wants to update the token in interactive mode
         if [ -t 0 ]; then
             echo ""
             read -p "Do you want to update this Figma token? (y/n): " update_figma_token
@@ -277,7 +271,7 @@ collect_figma_token() {
             print_success "Found existing Figma token in Claude config: ${EXISTING_FIGMA_TOKEN:0:8}..."
             FIGMA_ACCESS_TOKEN="$EXISTING_FIGMA_TOKEN"
             
-            # Ask if user wants to update the existing token (only in interactive mode)
+            # ALWAYS ask if user wants to update the existing token in interactive mode
             if [ -t 0 ]; then
                 echo ""
                 read -p "Do you want to update this Figma token? (y/n): " update_existing_figma
@@ -303,9 +297,10 @@ collect_figma_token() {
             return 0  # Exit function successfully
         fi
         
-        # Interactive input
+        # Interactive input - ALWAYS ask if user wants to configure Figma
         echo ""
         print_status "Figma MCP integration provides access to your Figma designs and components."
+        print_status "This allows Claude to read your design files, extract design tokens, and help implement designs."
         echo ""
         read -p "Do you want to configure Figma integration? (y/n): " configure_figma
         
