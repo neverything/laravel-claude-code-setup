@@ -842,8 +842,28 @@ install_debugbar_mcp() {
     # Check if Laravel DebugBar is installed
     if grep -q "barryvdh/laravel-debugbar" composer.json 2>/dev/null; then
         print_status "Laravel DebugBar detected, installing MCP server..."
-        npm install -g @sebdesign/debugbar-mcp-server
-        print_success "Laravel DebugBar MCP Server installed!"
+        
+        cd "$MCP_DIR"
+        
+        # Clone the correct repository
+        if [ ! -d "laravel-debugbar-mcp" ]; then
+            if git clone https://github.com/021-factory/laravel-debugbar-mcp.git laravel-debugbar-mcp; then
+                cd laravel-debugbar-mcp
+                npm install
+                npm run build
+                print_success "Laravel DebugBar MCP Server installed!"
+            else
+                print_error "Failed to clone Laravel DebugBar MCP repository"
+                return 1
+            fi
+        else
+            print_status "Laravel DebugBar MCP already cloned, updating..."
+            cd laravel-debugbar-mcp
+            git pull
+            npm install
+            npm run build
+            print_success "Laravel DebugBar MCP Server updated!"
+        fi
     else
         print_warning "Laravel DebugBar not found. Skipping DebugBar MCP installation."
         print_status "To use DebugBar MCP later, install: composer require barryvdh/laravel-debugbar --dev"
@@ -1215,10 +1235,14 @@ configure_claude_mcp() {
     # Add Laravel DebugBar MCP if available
     if grep -q "barryvdh/laravel-debugbar" composer.json 2>/dev/null; then
         print_status "Adding Laravel DebugBar MCP server for $PROJECT_NAME..."
-        if LARAVEL_PROJECT_PATH="$PROJECT_PATH" claude mcp add "debugbar-$PROJECT_ID" npx @sebdesign/debugbar-mcp-server; then
-            print_success "Laravel DebugBar MCP server added: debugbar-$PROJECT_ID"
+        if [ -f "$MCP_DIR/laravel-debugbar-mcp/build/index.js" ]; then
+            if LARAVEL_PROJECT_PATH="$PROJECT_PATH" claude mcp add "debugbar-$PROJECT_ID" node "$MCP_DIR/laravel-debugbar-mcp/build/index.js"; then
+                print_success "Laravel DebugBar MCP server added: debugbar-$PROJECT_ID"
+            else
+                print_warning "Failed to add Laravel DebugBar MCP server"
+            fi
         else
-            print_warning "Failed to add Laravel DebugBar MCP server"
+            print_warning "Laravel DebugBar MCP server not built properly - skipping"
         fi
     fi
     
