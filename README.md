@@ -16,6 +16,12 @@ Installs and configures Claude Code with a complete development ecosystem:
 - ✅ **Filesystem access** - Read/write your specific Laravel project files
 - ✅ **Database integration** - Direct access to your project's database
 
+### 🎯 Automated Quality Control (NEW!)
+- ✅ **Auto-linting** - Runs `composer refactor` and `composer lint` after file edits
+- ✅ **Auto-testing** - Runs `composer test` to ensure changes don't break tests
+- ✅ **Local hooks** - Project-specific hooks in `.claude/hooks/`
+- ✅ **Zero-config** - Works out of the box with standard Laravel projects
+
 The installer intelligently sets up global servers once and adds project-specific servers for each Laravel project.
 
 ## 🚀 Quick Install
@@ -85,6 +91,23 @@ cd /path/to/your/laravel/project
 claude
 ```
 
+### 🎯 Automated Quality Control
+
+The installer sets up hooks that automatically run after you edit files:
+- **Linting**: Runs `composer refactor` and `composer lint` 
+- **Testing**: Runs `composer test`
+
+For this to work properly, ensure your `composer.json` has these scripts:
+```json
+{
+  "scripts": {
+    "refactor": "vendor/bin/rector && vendor/bin/pint",
+    "lint": "vendor/bin/phpstan analyse",
+    "test": "vendor/bin/pest --parallel"
+  }
+}
+```
+
 Then test everything works:
 
 ### 📊 Database & Project Analysis
@@ -134,6 +157,10 @@ The script intelligently manages global vs project-specific resources:
 - **memory_prompts.md** - Memory initialization for AI learning
 - **shortcuts.sh** - Development aliases and shortcuts
 - **README.md** - Setup documentation
+- **hooks/** - Automated quality control scripts
+  - **lint.sh** - Runs Laravel linting and formatting
+  - **test.sh** - Runs your test suite
+- **settings.local.json** - Claude Code hook configuration
 
 ### MCP Server Binaries & Dependencies
 - **Context7** - Built from source with npm

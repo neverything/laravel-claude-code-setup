@@ -1,0 +1,266 @@
+# Laravel Development Partnership with Claude
+
+You're working with a Laravel developer who values exceptional code quality, maintainability, and modern development practices. This document establishes our working relationship and non-negotiable standards.
+
+## Partnership Approach
+
+We're partners in building production-quality Laravel applications. You provide expertise and implementation while I provide requirements and direction. When you see better approaches, suggest them. When you see potential issues, flag them. When something seems unclear, ask for clarification.
+
+## 🚨 NON-NEGOTIABLE: Automated Quality Checks
+
+**ZERO TOLERANCE POLICY**: All automated checks must pass. No exceptions.
+
+- **Linting**: All style issues must be fixed (Pint/PHPStan)
+- **Testing**: All tests must pass, no skipped tests
+- **Type Safety**: Full type hints on all methods and properties
+- **Security**: No vulnerabilities, no exposed secrets
+- **Performance**: No N+1 queries, no unnecessary queries
+
+**EVERYTHING MUST BE GREEN** - If a hook fails, you must fix it immediately.
+
+## Workflow: Research → Plan → Implement
+
+### 🚨 NEVER JUMP STRAIGHT TO CODING
+
+1. **Research First**
+   - Understand existing code patterns
+   - Check for similar implementations
+   - Review relevant documentation
+   - Use MCP servers (filesystem, database, Context7)
+
+2. **Present a Plan**
+   - Outline the approach
+   - Identify affected files
+   - Note potential challenges
+   - Get approval before proceeding
+
+3. **Implement with Checkpoints**
+   - Run linters after every 3 file edits
+   - Test each component as you build
+   - Verify hooks pass before moving on
+
+## When to Use "ultrathink"
+
+For complex architectural decisions or tricky bugs, use extended thinking:
+- Database schema design
+- Complex Livewire component interactions
+- Performance optimization strategies
+- Security implementation details
+
+## Reality Checkpoints
+
+**After completing any feature:**
+```bash
+./vendor/bin/pint          # Laravel code style
+./vendor/bin/phpstan       # Static analysis
+php artisan test          # Run tests
+```
+
+**Hook Failure Recovery Protocol:**
+1. Read the exact error message
+2. Fix the specific issue (don't disable the check)
+3. Re-run the check to verify
+4. Only proceed when everything passes
+
+## Working Memory Management
+
+When conversations get long:
+1. Re-read this CLAUDE.md file
+2. Check PROGRESS.md for completed work
+3. Review TODO.md for pending tasks
+4. Use MCP memory server for important decisions
+
+## 🚨 FORBIDDEN: Never Do These
+
+### Laravel Anti-Patterns
+- ❌ Raw SQL queries (use Eloquent/Query Builder)
+- ❌ Direct $_GET/$_POST access (use Request)
+- ❌ Database queries in Blade views
+- ❌ Logic in routes files
+- ❌ Hardcoded configuration values
+- ❌ Missing database indexes on foreign keys
+- ❌ N+1 query problems
+- ❌ enum columns in database, use Enum classes instead
+
+### Livewire Violations
+- ❌ Database queries in render() method
+- ❌ Polling for real-time updates (use Reverb + Echo)
+- ❌ Computed properties that hit database
+- ❌ Public properties with sensitive data
+
+### Code Quality Sins
+- ❌ Commented-out code
+- ❌ TODO comments (use TODO.md instead)
+- ❌ Var_dump/dd() in committed code
+- ❌ Empty catch blocks
+- ❌ Disabled linter rules
+- ❌ "Fix later" implementations
+
+### Security Disasters
+- ❌ SQL injection vulnerabilities
+- ❌ XSS vulnerabilities
+- ❌ Mass assignment vulnerabilities
+- ❌ Exposed API keys or secrets
+- ❌ Unvalidated user input
+- ❌ Direct file system access from user input
+
+## ✅ REQUIRED: Always Do These
+
+### Laravel Excellence
+- ✅ Use Livewire and Filament validation
+- ✅ Use Policies for authorization
+- ✅ Use Jobs for heavy processing
+- ✅ Use Events/Listeners for decoupling
+- ✅ Use Eloquent relationships properly
+- ✅ Add database indexes for foreign keys and frequent queries, use Enum classes, never create enum columns in the database
+
+### Livewire Best Practices
+- ✅ Keep components focused (single responsibility)
+- ✅ Use wire:model for form binding
+- ✅ Emit events for parent-child communication
+- ✅ Use validation rules in components
+- ✅ Implement real-time with Reverb + Echo, No polling
+- ✅ Use defer for non-critical updates
+
+### Filament Standards
+- ✅ Use Filament Resources for CRUD
+- ✅ Implement proper authorization
+- ✅ Use Form/Table builders
+- ✅ Create custom fields when needed
+- ✅ Use notifications for user feedback
+- ✅ Don't use polling or JS window.reload() always use Echo and Broadcasting
+
+### Code Structure
+- ✅ Single Responsibility Principle
+- ✅ Dependency Injection
+- ✅ Service classes for business logic
+- ✅ Clear, self-documenting variable names
+- ✅ Type hints on all methods
+
+## Implementation Standards
+
+A feature is only complete when:
+- ✅ All code is written and working
+- ✅ All automated checks pass (green)
+- ✅ Feature works end-to-end
+- ✅ Tests are written and passing
+- ✅ No performance issues
+- ✅ No security vulnerabilities
+- ✅ Code follows Laravel conventions
+
+## Testing Strategy
+
+### Always Test
+- Livewire components
+- Critical business logic
+- Authorization policies
+
+### Test Types
+- Feature tests for user flows
+- Unit tests for services/actions
+- Browser tests for complex UI (Dusk)
+- All Tests are PEST Tests, no other Test style allowed
+
+## Project Structure
+
+```
+app/
+├── Actions/          # Single-purpose action classes
+├── Console/          # Artisan commands
+├── Events/           # Event classes
+├── Exceptions/       # Custom exceptions
+├── Filament/         # Filament resources and pages
+├── Http/
+│   ├── Controllers/  # Keep thin, delegate to services
+│   ├── Livewire/    # Livewire components
+│   ├── Middleware/  # Custom middleware
+│   └── Requests/    # Form requests
+├── Jobs/            # Queued jobs
+├── Listeners/       # Event listeners
+├── Models/          # Eloquent models
+├── Policies/        # Authorization policies
+├── Providers/       # Service providers
+└── Services/        # Business logic
+```
+
+## Problem-Solving Protocol
+
+When you're stuck or confused:
+1. **Stop** - Don't spiral into complex solutions
+2. **Delegate** - Consider spawning agents for parallel investigation
+3. **Ultrathink** - For complex problems, say "I need to ultrathink through this challenge" to engage deeper reasoning
+4. **Step back** - Re-read the requirements
+5. **Simplify** - The simple solution is usually correct
+6. **Ask** - "I see two approaches: [A] vs [B]. Which do you prefer?"
+
+My insights on better approaches are valued - please ask for them!
+
+## Performance Guidelines
+
+- Measure before optimizing
+- Use database indexes effectively
+- Implement caching strategically
+- Use queues for heavy operations
+- Optimize queries with eager loading
+- Monitor with Laravel Debugbar
+
+## Security Requirements
+
+- Validate all input
+- Sanitize all output
+- Use Laravel's built-in security features
+- Never trust user input
+- Always use parameterized queries
+- Implement proper CORS policies
+- Use HTTPS in production
+
+## Communication
+
+### Progress Updates
+```
+✅ Completed: [what was done]
+🔄 In Progress: [what you're working on]
+❌ Blocked: [what's blocking you]
+```
+
+### Suggesting Improvements
+"I notice [observation]. Would you like me to [suggestion]?"
+
+### Asking for Clarification
+"To ensure I implement this correctly, could you clarify [specific question]?"
+
+## Remember
+
+1. **Quality over speed** - Do it right the first time
+2. **Hooks are helpers** - They catch mistakes early
+3. **You're building production code** - No shortcuts
+4. **Communication is key** - Unclear? Ask!
+5. **Learn from patterns** - Follow existing code style
+
+## MCP Server Usage
+
+You have access to:
+- **Filesystem**: Read/write project files
+- **Database**: Query and inspect data
+- **Context7**: Access latest Laravel docs
+- **Memory**: Store important decisions
+- **GitHub**: Repository operations
+- **Web Fetch**: External resources
+
+Use these actively to maintain context and ensure quality.
+
+## Custom Commands
+
+Use these slash commands for structured workflows:
+- `/check` - Run comprehensive quality checks
+- `/next` - Implement features with production quality
+- `/prompt` - Generate complete implementation prompts
+
+## Personal Preferences
+
+Import your personal Laravel development preferences:
+- @.claude/personal-laravel-preferences.md
+
+---
+
+*This is CLAUDE.md - your project's development standards and workflow guide.*

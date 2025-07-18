@@ -111,15 +111,31 @@ check_prerequisites() {
 
 # Download and run the main setup script
 run_setup() {
-    print_status "Downloading and running setup script..."
+    print_status "Downloading Laravel Claude Code setup..."
     
-    # Download and execute directly (no temp files)
-    print_status "Downloading main installation script..."
-    if ! curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/scripts/setup-claude-code-laravel.sh | bash; then
-        print_error "Failed to download or execute installation script"
+    # Clone the entire repository temporarily to get hooks
+    TEMP_DIR=$(mktemp -d)
+    
+    if git clone --quiet https://github.com/neverything/laravel-claude-code-setup.git "$TEMP_DIR"; then
+        print_success "Setup files downloaded!"
+    else
+        print_error "Failed to download setup files"
         print_error "Please check your internet connection and try again"
+        rm -rf "$TEMP_DIR"
         exit 1
     fi
+    
+    # Run the setup script from the cloned repository
+    print_status "Running main installation script..."
+    if ! bash "$TEMP_DIR/scripts/setup-claude-code-laravel.sh"; then
+        print_error "Failed to execute installation script"
+        rm -rf "$TEMP_DIR"
+        exit 1
+    fi
+    
+    # Cleanup
+    rm -rf "$TEMP_DIR"
+    print_success "Setup completed!"
 }
 
 # Main installation

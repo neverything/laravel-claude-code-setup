@@ -3,7 +3,19 @@
 # Laravel Claude Code Setup Script
 # Automatically configures Claude Code with MCP servers for Laravel development
 # Author: Laravel Developer
-# Version: 2.0
+# Version: 2.2
+# 
+# Changes in v2.2:
+# - Refactored to use template files for all content (no embedded content)
+# - All .md files now maintained as separate templates for easier editing
+# - Fixed CLAUDE.local.md references (now uses CLAUDE.md)
+#
+# Changes in v2.1:
+# - Added CLAUDE.md generation with production quality standards
+# - Added custom command files (/check, /next, /prompt) 
+# - Enhanced workflow with Research → Plan → Implement methodology
+# - Integrated with hooks for automated quality enforcement
+# - Uses modern import syntax for personal preferences
 
 set -e  # Exit on any error
 
@@ -950,273 +962,6 @@ create_project_prompts() {
         print_error ".claude directory was not created successfully"
         return 1
     fi
-    
-    print_status "Creating project context file..."
-    cat > ".claude/project_context.md" << 'EOF'
-## Project Context & Tech Stack
-You are working with a Laravel full-stack developer on the "$PROJECT_NAME" project. This is a Laravel application using:
-
-- **Framework**: Laravel (latest version)
-- **Frontend Stack**: Livewire + Alpine.js + Tailwind CSS
-- **Admin Interface**: Filament
-- **Database**: $DB_CONNECTION
-- **Development Focus**: Full-stack Laravel development with modern frontend tools
-
-## Developer Preferences & Coding Style
-
-### Laravel Best Practices
-- Always follow Laravel conventions and best practices
-- Use Eloquent ORM for database operations
-- Implement proper request validation using Form Requests
-- Use Laravel's built-in authentication and authorization
-- Follow PSR-12 coding standards
-- Use meaningful variable and method names
-- Write comprehensive feature tests
-
-### Livewire Development
-- Prefer Livewire over Vue/React for dynamic components
-- Use public properties for data binding
-- Implement proper validation in Livewire components
-- Use lifecycle hooks appropriately (mount, render, updated, etc.)
-- Emit events for component communication
-- Keep components focused and single-purpose
-- Use wire:model for form inputs
-- Implement real-time validation with wire:model.lazy or wire:model.debounce
-
-### Filament Administration
-- Use Filament for all admin interfaces
-- Create proper Resource classes for models
-- Implement custom pages when needed
-- Use Filament's form builder for complex forms
-- Leverage Filament's table builder for listings
-- Implement proper authorization policies
-- Use Filament's notification system
-- Create custom widgets for dashboards
-
-### Frontend Development
-- Use Tailwind CSS utility classes exclusively
-- Prefer utility classes over custom CSS
-- Follow mobile-first responsive design principles
-- Use Alpine.js for simple client-side interactivity
-- Keep Alpine.js components small and focused
-- Use Tailwind's design system (spacing, colors, typography)
-- Implement dark mode support when requested
-
-### Database & Models
-- Use migrations for all database changes
-- Create proper model relationships
-- Use factories for testing data
-- Implement model scopes for reusable queries
-- Use accessors and mutators appropriately
-- Follow Laravel's naming conventions for tables and columns
-
-## Available Tools
-You have access to the following MCP servers:
-- **Context7**: Access latest Laravel documentation and any other framework docs
-- **Filesystem**: Read and edit project files
-- **Database**: Query and modify database directly
-- **Memory**: Remember project decisions and patterns
-- **GitHub**: Manage repository operations
-- **Web Fetch**: Access external resources
-
-Use these tools actively to understand the project structure, run commands, and maintain context across sessions.
-
-## Project-Specific Notes
-- Database connection: $DB_CONNECTION
-- Project started: $(date)
-- Initial setup completed with full MCP server configuration
-
-Remember: Always prioritize Laravel conventions, use the developer's preferred stack (Livewire/Filament/Alpine/Tailwind), and maintain high code quality standards.
-EOF
-
-    # Replace variables in the file
-    sed -i '' "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/project_context.md" 2>/dev/null || sed -i "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/project_context.md"
-    sed -i '' "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/project_context.md" 2>/dev/null || sed -i "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/project_context.md"
-
-    if [ ! -f ".claude/project_context.md" ]; then
-        print_error "Failed to create project_context.md"
-        return 1
-    fi
-
-    print_status "Creating coding standards file..."
-    cat > ".claude/coding_standards.md" << 'EOF'
-# Coding Standards for $PROJECT_NAME
-
-## Laravel Conventions
-- Use singular model names (User, Post, not Users, Posts)
-- Use plural table names (users, posts)
-- Use snake_case for database columns
-- Use camelCase for model attributes
-- Use PascalCase for class names
-
-## Livewire Best Practices
-- Keep components focused and single-purpose
-- Use public properties for data binding
-- Validate input in the component
-- Use lifecycle hooks appropriately
-- Emit events for component communication
-
-## Tailwind CSS Guidelines
-- Use utility classes over custom CSS
-- Follow mobile-first responsive design
-- Use consistent spacing scale
-- Leverage Tailwind's color palette
-- Use component classes for repeated patterns
-
-## Filament Conventions
-- Organize resources logically
-- Use proper form validation
-- Implement proper authorization
-- Use custom pages when needed
-- Follow Filament's naming conventions
-EOF
-
-    # Replace variables in the file
-    sed -i '' "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/coding_standards.md" 2>/dev/null || sed -i "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/coding_standards.md"
-
-    print_status "Creating Claude instructions file..."
-    cat > ".claude/instructions.md" << 'EOF'
-# Claude Instructions for $PROJECT_NAME Laravel Project
-
-## Project Context & Tech Stack
-You are working with a Laravel full-stack developer on the "$PROJECT_NAME" project. This is a Laravel application using:
-
-- **Framework**: Laravel (latest version)
-- **Frontend Stack**: Livewire + Alpine.js + Tailwind CSS
-- **Admin Interface**: Filament
-- **Database**: $DB_CONNECTION
-- **Development Focus**: Full-stack Laravel development with modern frontend tools
-
-## Developer Preferences & Coding Style
-
-### Laravel Best Practices
-- Always follow Laravel conventions and best practices
-- Use Eloquent ORM for database operations
-- Implement proper request validation using Form Requests
-- Use Laravel's built-in authentication and authorization
-- Follow PSR-12 coding standards
-- Use meaningful variable and method names
-- Write comprehensive feature tests
-
-### Livewire Development
-- Prefer Livewire over Vue/React for dynamic components
-- Use public properties for data binding
-- Implement proper validation in Livewire components
-- Use lifecycle hooks appropriately (mount, render, updated, etc.)
-- Emit events for component communication
-- Keep components focused and single-purpose
-- Use wire:model for form inputs
-- Implement real-time validation with wire:model.lazy or wire:model.debounce
-
-### Filament Administration
-- Use Filament for all admin interfaces
-- Create proper Resource classes for models
-- Implement custom pages when needed
-- Use Filament's form builder for complex forms
-- Leverage Filament's table builder for listings
-- Implement proper authorization policies
-- Use Filament's notification system
-- Create custom widgets for dashboards
-
-### Frontend Development
-- Use Tailwind CSS utility classes exclusively
-- Prefer utility classes over custom CSS
-- Follow mobile-first responsive design principles
-- Use Alpine.js for simple client-side interactivity
-- Keep Alpine.js components small and focused
-- Use Tailwind's design system (spacing, colors, typography)
-- Implement dark mode support when requested
-
-### Database & Models
-- Use migrations for all database changes
-- Create proper model relationships
-- Use factories for testing data
-- Implement model scopes for reusable queries
-- Use accessors and mutators appropriately
-- Follow Laravel's naming conventions for tables and columns
-
-## Available Tools
-You have access to the following MCP servers:
-- **Context7**: Access latest Laravel documentation and any other framework docs
-- **Filesystem**: Read and edit project files
-- **Database**: Query and modify database directly
-- **Memory**: Remember project decisions and patterns
-- **GitHub**: Manage repository operations
-- **Web Fetch**: Access external resources
-
-Use these tools actively to understand the project structure, run commands, and maintain context across sessions.
-
-## Project-Specific Notes
-- Database connection: $DB_CONNECTION
-- Project started: $(date)
-- Initial setup completed with full MCP server configuration
-
-Remember: Always prioritize Laravel conventions, use the developer's preferred stack (Livewire/Filament/Alpine/Tailwind), and maintain high code quality standards.
-EOF
-
-    # Replace variables in the file
-    sed -i '' "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/instructions.md" 2>/dev/null || sed -i "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/instructions.md"
-    sed -i '' "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/instructions.md" 2>/dev/null || sed -i "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/instructions.md"
-
-    print_status "Creating memory prompts file..."
-    cat > ".claude/memory_prompts.md" << 'EOF'
-# Memory Initialization for $PROJECT_NAME
-
-## Project Information
-- **Project Name**: $PROJECT_NAME
-- **Tech Stack**: Laravel + Livewire + Filament + Alpine.js + Tailwind CSS
-- **Database**: $DB_CONNECTION
-- **Main Developer**: Laravel Full-Stack Developer
-- **Preferred Tools**: Livewire, Filament, Alpine, Tailwind
-
-## Development Preferences
-- Follow Laravel best practices and conventions
-- Use Livewire for dynamic components over Vue/React
-- Prefer Tailwind utility classes over custom CSS
-- Use Filament for admin interfaces
-- Write feature tests for new functionality
-- Follow PSR-12 coding standards
-
-## Project Structure Notes
-- Custom Livewire components in app/Http/Livewire/
-- Filament resources in app/Filament/Resources/
-- Alpine.js components in resources/js/
-- Custom Tailwind components in resources/css/
-
-## Remember These Decisions
-(This section will be updated as the project evolves)
-- [Date] - Decision made about X
-- [Date] - Architectural choice for Y
-- [Date] - Code pattern established for Z
-
-## Common Tasks for This Project
-- Creating Livewire components with proper validation
-- Setting up Filament resource pages
-- Implementing Alpine.js interactivity
-- Database migrations and model relationships
-- Feature testing with PHPUnit
-EOF
-
-    # Replace variables in the file
-    sed -i '' "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/memory_prompts.md" 2>/dev/null || sed -i "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/memory_prompts.md"
-    sed -i '' "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/memory_prompts.md" 2>/dev/null || sed -i "s/\$DB_CONNECTION/$DB_CONNECTION/g" ".claude/memory_prompts.md"
-    
-    # Verify all files were created successfully
-    local files_created=0
-    for file in "project_context.md" "coding_standards.md" "instructions.md" "memory_prompts.md"; do
-        if [ -f ".claude/$file" ]; then
-            ((files_created++))
-        else
-            print_error "Failed to create .claude/$file"
-        fi
-    done
-    
-    if [ $files_created -eq 4 ]; then
-        print_success "Project prompts created! ($files_created/4 files)"
-    else
-        print_error "Only $files_created/4 project files were created successfully"
-        return 1
-    fi
 }
 
 # Create useful aliases and shortcuts
@@ -1282,71 +1027,193 @@ EOF
     fi
 }
 
-# Generate project documentation
-generate_docs() {
-    print_status "Generating project documentation..."
+# Install Claude Code hooks
+install_hooks() {
+    print_status "Installing Claude Code hooks..."
     
     # Ensure we're in the project directory
     PROJECT_PATH="$PWD"
-    PROJECT_NAME=$(basename "$PROJECT_PATH")
     cd "$PROJECT_PATH"
     
-    # Verify .claude directory exists
-    if [ ! -d ".claude" ]; then
-        print_error ".claude directory does not exist, cannot create documentation"
+    # Create hooks directory
+    if ! mkdir -p ".claude/hooks"; then
+        print_error "Failed to create .claude/hooks directory"
         return 1
     fi
     
-    cat > ".claude/README.md" << 'EOF'
-# Claude Code Setup for $PROJECT_NAME
-
-This Laravel project has been configured with Claude Code and the following MCP servers:
-
-## Available MCP Servers
-
-### Global Servers (shared across all projects)
-1. **GitHub** - Repository access and management
-2. **Memory** - Shared knowledge base across projects
-3. **Context7** - Latest documentation access
-4. **Web Fetch** - External API and resource access
-
-### Project-Specific Servers
-1. **Filesystem** - Access to this project's files
-2. **Database** - Direct database access for this project
-
-## Usage
-1. Open Claude Code in this project directory
-2. All MCP servers are automatically configured
-3. Use natural language to interact with your codebase
-4. Ask Claude to help with Laravel, Livewire, Filament, and Tailwind tasks
-
-## Environment
-- Laravel Framework
-- Livewire for dynamic components
-- Filament for admin interface
-- Alpine.js for frontend interactivity
-- Tailwind CSS for styling
-
-## Getting Started
-Run `source .claude/shortcuts.sh` to load helpful aliases.
-
-## Tips
-- Global servers work across all your Laravel projects
-- Use project names when referencing files: "Read .env from $PROJECT_NAME"
-- GitHub access works for all your repositories
-- Memory is shared, so decisions in one project can inform others
-
-Happy coding! 🚀
-EOF
-
-    # Replace variables in the file
-    sed -i '' "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/README.md" 2>/dev/null || sed -i "s/\$PROJECT_NAME/$PROJECT_NAME/g" ".claude/README.md"
-
-    # Verify the file was created
-    if [ -f ".claude/README.md" ]; then
-        print_success "Documentation generated!"
+    # Get the directory where this script is located
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SETUP_DIR="$(dirname "$SCRIPT_DIR")"
+    
+    # Copy hooks from the setup repository
+    if [ -d "$SETUP_DIR/hooks" ]; then
+        print_status "Copying hooks from $SETUP_DIR/hooks"
+        
+        # Copy lint.sh
+        if [ -f "$SETUP_DIR/hooks/lint.sh" ]; then
+            cp "$SETUP_DIR/hooks/lint.sh" ".claude/hooks/lint.sh"
+            chmod +x ".claude/hooks/lint.sh"
+            print_success "Installed lint.sh hook"
+        else
+            print_warning "lint.sh not found in setup directory"
+        fi
+        
+        # Copy test.sh
+        if [ -f "$SETUP_DIR/hooks/test.sh" ]; then
+            cp "$SETUP_DIR/hooks/test.sh" ".claude/hooks/test.sh"
+            chmod +x ".claude/hooks/test.sh"
+            print_success "Installed test.sh hook"
+        else
+            print_warning "test.sh not found in setup directory"
+        fi
     else
-        print_error "Failed to create README.md file"
+        print_error "Hooks directory not found in setup repository"
+        return 1
+    fi
+    
+    # Create settings.local.json
+    print_status "Creating settings.local.json..."
+    cat > ".claude/settings.local.json" << 'EOF'
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/lint.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/test.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+EOF
+    
+    if [ -f ".claude/settings.local.json" ]; then
+        print_success "Created settings.local.json"
+    else
+        print_error "Failed to create settings.local.json"
+        return 1
+    fi
+    
+    print_success "Hooks installation completed!"
+    return 0
+}
+
+# Check for existing CLAUDE.md
+check_claude_files() {
+    print_status "Checking for existing CLAUDE documentation..."
+    
+    if [ -f "CLAUDE.md" ]; then
+        print_success "Found existing CLAUDE.md - skipping creation"
+        return 0
+    fi
+    
+    print_status "No CLAUDE.md found - will create one with Laravel development standards"
+    return 1
+}
+
+# Create CLAUDE.md with Laravel-specific standards
+create_claude_md() {
+    print_status "Creating CLAUDE.md with Laravel development standards..."
+    
+    # Get project information
+    PROJECT_NAME=$(basename "$PWD")
+    PROJECT_PATH="$PWD"
+    
+    # Get the directory where this script is located
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SETUP_DIR="$(dirname "$SCRIPT_DIR")"
+    
+    # Copy from template
+    TEMPLATE_FILE="$SETUP_DIR/templates/CLAUDE.md.template"
+    if [ -f "$TEMPLATE_FILE" ]; then
+        cp "$TEMPLATE_FILE" "CLAUDE.md"
+    else
+        print_error "CLAUDE.md template not found at $TEMPLATE_FILE"
+        print_error "Cannot continue without template file"
+        return 1
+    fi
+    
+    # Replace variables if file was created
+    if [ -f "CLAUDE.md" ]; then
+        # Replace project name variables
+        sed -i '' "s/\$PROJECT_NAME/$PROJECT_NAME/g" "CLAUDE.md" 2>/dev/null || sed -i "s/\$PROJECT_NAME/$PROJECT_NAME/g" "CLAUDE.md"
+        
+        print_success "CLAUDE.md created successfully!"
+        print_status "This file establishes development standards and quality requirements."
+        print_status "Personal preferences can be added to ~/.claude/personal-laravel-preferences.md"
+        return 0
+    else
+        print_error "Failed to create CLAUDE.md"
+        return 1
+    fi
+}
+
+# Create command files for Laravel development
+create_command_files() {
+    print_status "Creating Claude command files..."
+    
+    # Create commands directory
+    if ! mkdir -p ".claude/commands"; then
+        print_error "Failed to create .claude/commands directory"
+        return 1
+    fi
+    
+    # Get the directory where this script is located
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SETUP_DIR="$(dirname "$SCRIPT_DIR")"
+    
+    # Copy command templates
+    COMMANDS_DIR="$SETUP_DIR/templates/commands"
+    
+    if [ ! -d "$COMMANDS_DIR" ]; then
+        print_error "Command templates directory not found at $COMMANDS_DIR"
+        return 1
+    fi
+    
+    # Copy check.md
+    if [ -f "$COMMANDS_DIR/check.md.template" ]; then
+        cp "$COMMANDS_DIR/check.md.template" ".claude/commands/check.md"
+        chmod +x ".claude/commands/check.md" 2>/dev/null || true
+        print_status "Created check.md command"
+    else
+        print_error "check.md template not found"
+        return 1
+    fi
+    
+    # Copy next.md
+    if [ -f "$COMMANDS_DIR/next.md.template" ]; then
+        cp "$COMMANDS_DIR/next.md.template" ".claude/commands/next.md"
+        chmod +x ".claude/commands/next.md" 2>/dev/null || true
+        print_status "Created next.md command"
+    else
+        print_error "next.md template not found"
+        return 1
+    fi
+    
+    # Copy prompt.md
+    if [ -f "$COMMANDS_DIR/prompt.md.template" ]; then
+        cp "$COMMANDS_DIR/prompt.md.template" ".claude/commands/prompt.md"
+        chmod +x ".claude/commands/prompt.md" 2>/dev/null || true
+        print_status "Created prompt.md command"
+    else
+        print_error "prompt.md template not found"
+        return 1
+    fi
+    
+    # Verify commands were created
+    if [ -f ".claude/commands/check.md" ] && [ -f ".claude/commands/next.md" ] && [ -f ".claude/commands/prompt.md" ]; then
+        print_success "Command files created successfully!"
+        return 0
+    else
+        print_error "Failed to create some command files"
         return 1
     fi
 }
@@ -1354,7 +1221,7 @@ EOF
 # Main installation function
 main() {
         echo "======================================"
-    echo "Laravel Claude Code Setup Script v2.0"
+    echo "Laravel Claude Code Setup Script v2.2"
     echo "======================================"
     echo ""
     
@@ -1415,10 +1282,28 @@ main() {
         exit 1
     fi
     
-    if generate_docs; then
-        print_success "Documentation created successfully"
+    if install_hooks; then
+        print_success "Hooks installed successfully"
     else
-        print_error "Failed to create documentation"
+        print_error "Failed to install hooks"
+        exit 1
+    fi
+    
+    # Check for CLAUDE.md and create it if needed
+    if ! check_claude_files; then
+        if create_claude_md; then
+            print_success "CLAUDE.md created successfully"
+        else
+            print_error "Failed to create CLAUDE.md"
+            exit 1
+        fi
+    fi
+    
+    # Create command files
+    if create_command_files; then
+        print_success "Command files created successfully"
+    else
+        print_error "Failed to create command files"
         exit 1
     fi
     
@@ -1428,7 +1313,7 @@ main() {
     
     # Final verification
     print_status "Verifying project files..."
-    if [ -d ".claude" ] && [ -f ".claude/shortcuts.sh" ] && [ -f ".claude/project_context.md" ]; then
+    if [ -d ".claude" ] && [ -f ".claude/shortcuts.sh" ]; then
         print_success "All project files created successfully in $(pwd)/.claude/"
         ls -la .claude/
     else
@@ -1441,7 +1326,13 @@ main() {
     print_success "Setup completed successfully!"
     echo "======================================"
     echo ""
-    print_status "🚀 Claude Code is now fully configured with MCP servers!"
+    print_status "🚀 Claude Code is now fully configured with MCP servers and quality standards!"
+    echo ""
+    print_status "✨ Created Files:"
+    echo "  - CLAUDE.md - Development standards and workflow"
+    echo "  - .claude/commands/ - Custom commands (/check, /next, /prompt)"
+    echo "  - .claude/hooks/ - Automated quality checks"
+    echo "  - .claude/shortcuts.sh - Laravel aliases"
     echo ""
     print_status "📋 Installed MCP Servers:"
     echo ""
@@ -1454,10 +1345,12 @@ main() {
     print_status "Next steps:"
     echo "1. Restart Claude Code to ensure all servers are loaded"
     echo "2. Load helpful aliases: source .claude/shortcuts.sh"
-    echo "3. Test MCP servers with: 'Can you list available MCP servers and read my .env file?'"
-    echo "4. Try: 'Show me the project structure' or 'What's in my database?'"
-    echo "5. Ask Claude to remember important project decisions"
-    echo "6. Start coding with full AI assistance!"
+    echo "3. Read CLAUDE.md for development standards and workflow"
+    echo "4. Try custom commands: /check, /next, /prompt"
+    echo "5. Test MCP servers with: 'Can you list available MCP servers and read my .env file?'"
+    echo "6. Try: 'Show me the project structure' or 'What's in my database?'"
+    echo "7. Ask Claude to remember important project decisions"
+    echo "8. Start coding with production-quality standards!"
     echo ""
     print_warning "💡 Pro tip: Use 'source .claude/shortcuts.sh' for Laravel aliases (pa, pam, par, etc.)"
     echo ""
