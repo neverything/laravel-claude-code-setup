@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Laravel Test Hook for Claude Code
 # Runs composer test command and checks for missing test files
-# Exit code 2 on test failures or missing required tests to block Claude Code
+# Exit code 1 on test failures or missing required tests to block Claude Code
 
 set +e  # Don't exit on first error
 
@@ -205,7 +205,7 @@ if [[ -n "$FILE_PATH" ]] && [[ "$FILE_PATH" =~ \.php$ ]]; then
             echo -e "${YELLOW}   - tests/Feature/${base}Test.php${NC}"
             
             echo -e "\n${RED}Create and implement the test file before continuing.${NC}"
-            exit 2
+            exit 1
         fi
     fi
 fi
@@ -221,10 +221,9 @@ echo -e "\n${BLUE}Running tests...${NC}"
 if ! composer test 2>&1; then
     echo -e "\n${RED}❌ Tests failed!${NC}"
     echo -e "${RED}Fix the failing tests before continuing.${NC}"
-    exit 2
+    exit 1
 fi
 
-# Success - exit with 2 to show continuation message
+# Success - exit cleanly
 echo -e "\n${GREEN}✅ All tests passed!${NC}"
-echo -e "${YELLOW}👉 Continue with your task.${NC}"
-exit 2
+exit 0

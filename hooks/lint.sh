@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Laravel Lint Hook for Claude Code
 # Runs Laravel-specific linting and formatting commands
-# Exit code 2 on any issues to block Claude Code
+# Exit code 1 on any issues to block Claude Code
 
 set +e  # Don't exit on first error, we want to run all checks
 
@@ -48,10 +48,9 @@ if [[ "$HAS_ERRORS" == "true" ]]; then
         echo -e "$error"
     done
     echo -e "\n${RED}❌ Fix all issues above before continuing!${NC}"
-    exit 2
+    exit 1
 fi
 
-# Success - exit with 2 to show continuation message
+# Success - exit cleanly
 echo -e "\n${GREEN}✅ All checks passed!${NC}"
-echo -e "${YELLOW}👉 Continue with your task.${NC}"
-exit 2
+exit 0
