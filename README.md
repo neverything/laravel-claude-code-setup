@@ -15,7 +15,6 @@ Installs and configures Claude Code with a complete development ecosystem:
 ### 📁 Project-Specific MCP Servers
 - ✅ **Filesystem access** - Read/write your specific Laravel project files
 - ✅ **Database integration** - Direct access to your project's database
-- ✅ **Laravel DebugBar** - Real-time debugging (if installed)
 
 The installer intelligently sets up global servers once and adds project-specific servers for each Laravel project.
 
@@ -127,7 +126,6 @@ The script intelligently manages global vs project-specific resources:
 ### Project-Specific MCP Servers (per Laravel project)
 1. **Filesystem MCP Server** - Access to your project files
 2. **Database MCP Server** - Connected to your project's database
-3. **Laravel DebugBar MCP** (if available)
 
 ### Project Files (created in `.claude/`)
 - **instructions.md** - AI-optimized development instructions with Figma usage guide

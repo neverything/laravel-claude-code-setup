@@ -100,7 +100,6 @@ if [ "$UNINSTALL_SCOPE" = "project" ]; then
     echo "This will remove MCP servers for: $PROJECT_NAME"
     echo "• filesystem-$PROJECT_ID"
     echo "• database-$PROJECT_ID"
-    echo "• debugbar-$PROJECT_ID (if present)"
     echo "• Project-specific configurations"
     echo "• .claude/ directory (optional)"
     echo ""
@@ -131,7 +130,7 @@ if command -v claude &> /dev/null; then
         print_status "Removing project-specific MCP servers for: $PROJECT_NAME"
         
         # Find and remove project-specific MCP servers only
-        PROJECT_SERVERS=$(claude mcp list 2>/dev/null | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | awk '{print $1}' || true)
+        PROJECT_SERVERS=$(claude mcp list 2>/dev/null | grep -E "^(filesystem|database)-$PROJECT_ID" | awk '{print $1}' || true)
         
         if [ ! -z "$PROJECT_SERVERS" ]; then
             echo "$PROJECT_SERVERS" | while read -r server; do
@@ -153,7 +152,7 @@ if command -v claude &> /dev/null; then
         fi
         
         # Count remaining project servers
-        REMAINING_PROJECT_SERVERS=$(claude mcp list 2>/dev/null | grep -E "^(filesystem|database|debugbar)-" | wc -l | tr -d ' ')
+        REMAINING_PROJECT_SERVERS=$(claude mcp list 2>/dev/null | grep -E "^(filesystem|database)-" | wc -l | tr -d ' ')
         if [ "$REMAINING_PROJECT_SERVERS" -eq 0 ]; then
             print_status "No other Laravel projects configured - you may want to run complete uninstall to remove global servers"
         fi
@@ -241,7 +240,6 @@ if [ "$UNINSTALL_SCOPE" = "complete" ]; then
         "@modelcontextprotocol/server-filesystem"
         "@modelcontextprotocol/server-github" 
         "@modelcontextprotocol/server-memory"
-        "@021factory/laravel-debugbar-mcp"
     )
     
     for package in "${NPM_PACKAGES[@]}"; do
@@ -311,10 +309,10 @@ if [ "$UNINSTALL_SCOPE" = "project" ]; then
         claude mcp list 2>/dev/null | grep -E "^(github|memory|context7|webfetch)[[:space:]]" | sed 's/^/    ✅ /' || true
         echo ""
         
-        OTHER_PROJECT_SERVERS=$(claude mcp list 2>/dev/null | grep -E "^(filesystem|database|debugbar)-" | wc -l | tr -d ' ')
+        OTHER_PROJECT_SERVERS=$(claude mcp list 2>/dev/null | grep -E "^(filesystem|database)-" | wc -l | tr -d ' ')
         if [ "$OTHER_PROJECT_SERVERS" -gt 0 ]; then
             echo "  Other project servers:"
-            claude mcp list 2>/dev/null | grep -E "^(filesystem|database|debugbar)-" | sed 's/^/    ✅ /' || true
+            claude mcp list 2>/dev/null | grep -E "^(filesystem|database)-" | sed 's/^/    ✅ /' || true
         fi
     fi
     

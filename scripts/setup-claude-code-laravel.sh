@@ -537,41 +537,6 @@ install_memory() {
     print_success "Memory MCP Server installed!"
 }
 
-# Install Laravel DebugBar MCP Server (optional, requires DebugBar package)
-install_debugbar_mcp() {
-    print_status "Installing Laravel DebugBar MCP Server (optional)..."
-    
-    # Check if Laravel DebugBar is installed
-    if grep -q "barryvdh/laravel-debugbar" composer.json 2>/dev/null; then
-        print_status "Laravel DebugBar detected, installing MCP server..."
-        
-        cd "$MCP_DIR"
-        
-        # Clone the correct repository
-        if [ ! -d "laravel-debugbar-mcp" ]; then
-            if git clone https://github.com/021-factory/laravel-debugbar-mcp.git laravel-debugbar-mcp; then
-                cd laravel-debugbar-mcp
-                npm install
-                npm run build
-                print_success "Laravel DebugBar MCP Server installed!"
-            else
-                print_error "Failed to clone Laravel DebugBar MCP repository"
-                return 1
-            fi
-        else
-            print_status "Laravel DebugBar MCP already cloned, updating..."
-            cd laravel-debugbar-mcp
-            git pull
-            npm install
-            npm run build
-            print_success "Laravel DebugBar MCP Server updated!"
-        fi
-    else
-        print_warning "Laravel DebugBar not found. Skipping DebugBar MCP installation."
-        print_status "To use DebugBar MCP later, install: composer require barryvdh/laravel-debugbar --dev"
-    fi
-}
-
 # Parse Laravel .env file
 parse_env() {
     print_status "Parsing Laravel .env file..."
@@ -889,7 +854,7 @@ configure_claude_mcp() {
     
     # Clean up old project-specific servers
     print_status "Cleaning up existing project-specific MCP servers..."
-    claude mcp list 2>/dev/null | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | awk '{print $1}' | xargs -I {} claude mcp remove {} 2>/dev/null || true
+    claude mcp list 2>/dev/null | grep -E "^(filesystem|database)-$PROJECT_ID" | awk '{print $1}' | xargs -I {} claude mcp remove {} 2>/dev/null || true
     
     # Add PROJECT-SPECIFIC MCP servers (only filesystem and database)
     
@@ -931,43 +896,6 @@ configure_claude_mcp() {
         fi
     fi
     
-    # Add Laravel DebugBar MCP if available
-    if grep -q "barryvdh/laravel-debugbar" composer.json 2>/dev/null; then
-        print_status "Adding Laravel DebugBar MCP server for $PROJECT_NAME..."
-
-        cd "$MCP_DIR"
-
-        # Clone the correct repository
-        if [ ! -d "laravel-debugbar-mcp" ]; then
-            if git clone https://github.com/021-factory/laravel-debugbar-mcp.git laravel-debugbar-mcp; then
-                cd laravel-debugbar-mcp
-                npm install
-                npm run build
-                print_success "Laravel DebugBar MCP Server installed!"
-            else
-                print_error "Failed to clone Laravel DebugBar MCP repository"
-                return 1
-            fi
-        else
-            print_status "Laravel DebugBar MCP already cloned, updating..."
-            cd laravel-debugbar-mcp
-            git pull
-            npm install
-            npm run build
-            print_success "Laravel DebugBar MCP Server updated!"
-        fi
-
-        if [ -f "$MCP_DIR/laravel-debugbar-mcp/build/index.js" ]; then
-            if LARAVEL_PROJECT_PATH="$PROJECT_PATH" claude mcp add "debugbar-$PROJECT_ID" node "$MCP_DIR/laravel-debugbar-mcp/build/index.js"; then
-                print_success "Laravel DebugBar MCP server added: debugbar-$PROJECT_ID"
-            else
-                print_warning "Failed to add Laravel DebugBar MCP server"
-            fi
-        else
-            print_warning "Laravel DebugBar MCP server not built properly - skipping"
-        fi
-    fi
-    
     # Display final configuration
     print_status "Final MCP server configuration:"
     claude mcp list
@@ -982,7 +910,7 @@ configure_claude_mcp() {
     claude mcp list | grep -E "^(github|memory|context7|webfetch):" | sed 's/^/  ✅ /' || true
     echo ""
     print_status "Project-specific MCP servers for $PROJECT_NAME:"
-    claude mcp list | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | sed 's/^/  ✅ /' || true
+    claude mcp list | grep -E "^(filesystem|database)-$PROJECT_ID" | sed 's/^/  ✅ /' || true
     echo ""
     
     print_status "💡 Usage Tips:"
@@ -1385,7 +1313,6 @@ This Laravel project has been configured with Claude Code and the following MCP 
 ### Project-Specific Servers
 1. **Filesystem** - Access to this project's files
 2. **Database** - Direct database access for this project
-3. **Laravel DebugBar** (if installed) - Debug information
 
 ## Usage
 1. Open Claude Code in this project directory
@@ -1467,9 +1394,6 @@ main() {
     install_memory
     cd "$ORIGINAL_DIR"
     
-    install_debugbar_mcp
-    cd "$ORIGINAL_DIR"
-    
     # Generate database configuration
     generate_database_config
     cd "$ORIGINAL_DIR"
@@ -1525,7 +1449,7 @@ main() {
     claude mcp list | grep -E "^(github|memory|context7|webfetch):" | sed 's/^/    ✅ /' || true
     echo ""
     echo "  Project-Specific Servers for $PROJECT_NAME:"
-    claude mcp list | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | sed 's/^/    ✅ /' || true
+    claude mcp list | grep -E "^(filesystem|database)-$PROJECT_ID" | sed 's/^/    ✅ /' || true
     echo ""
     print_status "Next steps:"
     echo "1. Restart Claude Code to ensure all servers are loaded"
@@ -1542,7 +1466,7 @@ main() {
     
     # Count successful MCP servers
     GLOBAL_MCP_COUNT=$(claude mcp list | grep -E "^(github|memory|context7|webfetch):" | wc -l | tr -d ' ')
-    PROJECT_MCP_COUNT=$(claude mcp list | grep -E "^(filesystem|database|debugbar)-$PROJECT_ID" | wc -l | tr -d ' ')
+    PROJECT_MCP_COUNT=$(claude mcp list | grep -E "^(filesystem|database)-$PROJECT_ID" | wc -l | tr -d ' ')
     TOTAL_MCP_COUNT=$(claude mcp list | wc -l | tr -d ' ')
     
     if [ "$GLOBAL_MCP_COUNT" -ge 2 ] && [ "$PROJECT_MCP_COUNT" -ge 1 ]; then
