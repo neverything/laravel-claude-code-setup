@@ -1133,8 +1133,22 @@ check_claude_files() {
     print_status "Checking for existing CLAUDE documentation..."
     
     if [ -f "CLAUDE.md" ]; then
-        print_success "Found existing CLAUDE.md - skipping creation"
-        return 0
+        # Create timestamped backup
+        TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+        BACKUP_FILE="CLAUDE.md.backup_${TIMESTAMP}"
+        
+        print_status "Found existing CLAUDE.md - creating backup as $BACKUP_FILE"
+        cp "CLAUDE.md" "$BACKUP_FILE"
+        
+        if [ -f "$BACKUP_FILE" ]; then
+            print_success "Backup created successfully: $BACKUP_FILE"
+            print_status "Will now create fresh CLAUDE.md from template"
+            return 1  # Return 1 to trigger creation of new file
+        else
+            print_error "Failed to create backup of CLAUDE.md"
+            print_status "Keeping existing CLAUDE.md unchanged"
+            return 0  # Don't overwrite if backup failed
+        fi
     fi
     
     print_status "No CLAUDE.md found - will create one with Laravel development standards"
