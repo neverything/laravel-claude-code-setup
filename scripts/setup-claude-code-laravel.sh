@@ -956,6 +956,16 @@ configure_claude_mcp() {
             npm run build
             print_success "Laravel DebugBar MCP Server updated!"
         fi
+
+        if [ -f "$MCP_DIR/laravel-debugbar-mcp/build/index.js" ]; then
+            if LARAVEL_PROJECT_PATH="$PROJECT_PATH" claude mcp add "debugbar-$PROJECT_ID" node "$MCP_DIR/laravel-debugbar-mcp/build/index.js"; then
+                print_success "Laravel DebugBar MCP server added: debugbar-$PROJECT_ID"
+            else
+                print_warning "Failed to add Laravel DebugBar MCP server"
+            fi
+        else
+            print_warning "Laravel DebugBar MCP server not built properly - skipping"
+        fi
     fi
     
     # Display final configuration
