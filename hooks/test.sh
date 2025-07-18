@@ -218,7 +218,7 @@ fi
 
 # Run composer test
 echo -e "\n${BLUE}Running tests...${NC}"
-if ! composer test 2>&1; then
+if ! composer test:pest 2>&1; then
     echo -e "\n${RED}❌ Tests failed!${NC}"
     echo -e "${RED}Fix the failing tests before continuing.${NC}"
     exit 1

@@ -1184,7 +1184,7 @@ create_claude_md() {
         
         print_success "CLAUDE.md created successfully!"
         print_status "This file establishes development standards and quality requirements."
-        print_status "Personal preferences can be added to ~/.claude/personal-laravel-preferences.md"
+        print_status "Personal preferences can be added to .claude/personal-laravel-preferences.md"
         return 0
     else
         print_error "Failed to create CLAUDE.md"

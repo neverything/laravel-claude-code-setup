@@ -29,14 +29,21 @@ fi
 
 # Run composer refactor (Rector + Pint)
 echo -e "\n${BLUE}Running code refactoring...${NC}"
-if ! composer refactor 2>&1; then
+if ! composer refactor:rector &&  2>&1; then
     ERRORS+=("${RED}❌ Code refactoring failed${NC}")
     HAS_ERRORS=true
 fi
 
 # Run composer lint (PHPStan/Larastan)
+echo -e "\n${BLUE}Running linter...${NC}"
+if ! composer refactor:lint 2>&1; then
+    ERRORS+=("${RED}❌ Linter failed${NC}")
+    HAS_ERRORS=true
+fi
+
+# Run composer lint (PHPStan/Larastan)
 echo -e "\n${BLUE}Running static analysis...${NC}"
-if ! composer lint 2>&1; then
+if ! composer test:types 2>&1; then
     ERRORS+=("${RED}❌ Static analysis failed${NC}")
     HAS_ERRORS=true
 fi
