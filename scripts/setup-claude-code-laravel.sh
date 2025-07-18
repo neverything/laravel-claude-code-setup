@@ -1076,6 +1076,28 @@ install_hooks() {
     cat > ".claude/settings.local.json" << 'EOF'
 {
   "hooks": {
+    "Notification": [
+        {
+            "matcher": "*",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "afplay /System/Library/Sounds/Frog.aiff"
+                }
+            ]
+        }
+    ],
+    "Stop": [
+        {
+            "matcher": "*",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "afplay /System/Library/Sounds/Glass.aiff"
+                }
+            ]
+        }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit|MultiEdit",
