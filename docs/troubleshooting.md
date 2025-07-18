@@ -29,7 +29,7 @@ cd /path/to/your/laravel/project
 ls -la | grep artisan  # Should show artisan file
 
 # Then run installer again
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/install.sh | bash
 ```
 
 #### ❌ "Permission denied"
@@ -42,7 +42,7 @@ curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/m
 chmod +x install.sh
 
 # Or download with correct permissions
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/install.sh | bash
 ```
 
 #### ❌ Node.js or npm not found
@@ -74,7 +74,7 @@ npm install -g npm@latest
 cat ~/.config/claude-code/claude_desktop_config.json
 
 # If missing, re-run installer
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/install.sh | bash
 
 # Restart Claude Code completely
 # Quit Claude Code and relaunch
@@ -297,7 +297,7 @@ git --version
 Run installer with debug output:
 ```bash
 # Download script and run with debug
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh -o debug-install.sh
+curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/install.sh -o debug-install.sh
 bash -x debug-install.sh
 ```
 
@@ -319,13 +319,13 @@ ps aux | grep mcp
 If all else fails, clean install:
 ```bash
 # Remove all configurations
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/uninstall.sh | bash
 
 # Clean npm cache
 npm cache clean --force
 
 # Reinstall
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/install.sh | bash
 ```
 
 ### Log Analysis
@@ -374,8 +374,8 @@ cat ~/.config/claude-code/claude_desktop_config.json
 
 ### Community Support:
 
-- [GitHub Issues](https://github.com/laraben/laravel-claude-code-setup/issues)
-- [GitHub Discussions](https://github.com/laraben/laravel-claude-code-setup/discussions)
+- [GitHub Issues](https://github.com/neverything/laravel-claude-code-setup/issues)
+- [GitHub Discussions](https://github.com/neverything/laravel-claude-code-setup/discussions)
 - [Laravel Community](https://laravel.com/community)
 
 ### Quick Fixes:
@@ -425,4 +425,4 @@ npm update -g
 
 ---
 
-**Still having issues?** [Open an issue](https://github.com/laraben/laravel-claude-code-setup/issues) with detailed information about your problem.
+**Still having issues?** [Open an issue](https://github.com/neverything/laravel-claude-code-setup/issues) with detailed information about your problem.

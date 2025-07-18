@@ -348,6 +348,6 @@ else
 fi
 echo ""
 echo "To reinstall Laravel Claude Setup:"
-echo "curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh | bash"
+echo "curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/install.sh | bash"
 echo ""
 print_success "Thanks for using Laravel Claude Setup! 👋"

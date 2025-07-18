@@ -39,14 +39,14 @@ xcode-select --install
 cd /path/to/your/laravel/project
 
 # Run the installer
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/install.sh | bash
 ```
 
 ### Method 2: Manual Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/laraben/laravel-claude-code-setup.git
+git clone https://github.com/neverything/laravel-claude-code-setup.git
 cd laravel-claude-code-setup
 
 # Make installer executable
@@ -60,7 +60,7 @@ chmod +x install.sh
 
 ```bash
 # Download just the main script
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh -o setup-claude.sh
+curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/install.sh -o setup-claude.sh
 
 # Make it executable
 chmod +x setup-claude.sh
@@ -220,8 +220,8 @@ brew install node
 
 ### Get Help:
 - [Troubleshooting Guide](troubleshooting.md)
-- [GitHub Issues](https://github.com/laraben/laravel-claude-code-setup/issues)
-- [GitHub Discussions](https://github.com/laraben/laravel-claude-code-setup/discussions)
+- [GitHub Issues](https://github.com/neverything/laravel-claude-code-setup/issues)
+- [GitHub Discussions](https://github.com/neverything/laravel-claude-code-setup/discussions)
 
 ## 🔄 Updating
 
@@ -233,7 +233,7 @@ The installer is safe to run multiple times. It will:
 
 ```bash
 # Update to latest version
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/install.sh | bash
 ```
 
 ## 🎯 Next Steps
@@ -246,4 +246,4 @@ After successful installation:
 
 ---
 
-**Need help?** [Open an issue](https://github.com/laraben/laravel-claude-code-setup/issues) or check the [troubleshooting guide](troubleshooting.md).
+**Need help?** [Open an issue](https://github.com/neverything/laravel-claude-code-setup/issues) or check the [troubleshooting guide](troubleshooting.md).

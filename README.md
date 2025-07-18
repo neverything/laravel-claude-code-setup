@@ -1,6 +1,6 @@
 # Laravel Claude Code Setup 🚀
 
-**One-command setup** for Claude Code with Laravel development. Automatically configures all MCP servers for the ultimate AI-powered Laravel development experience with **Figma integration**.
+**One-command setup** for Claude Code with Laravel development. Automatically configures all MCP servers for the ultimate AI-powered Laravel development experience.
 
 ## 🎯 What This Does
 
@@ -11,18 +11,11 @@ Installs and configures Claude Code with a complete development ecosystem:
 - ✅ **Memory system** - Remember decisions across all projects
 - ✅ **Context7** - Latest Laravel/PHP documentation access
 - ✅ **Web fetch** - Access external APIs and resources
-- ✅ **Figma integration** - Design-to-code workflows with automatic design token extraction
 
 ### 📁 Project-Specific MCP Servers
 - ✅ **Filesystem access** - Read/write your specific Laravel project files
 - ✅ **Database integration** - Direct access to your project's database
 - ✅ **Laravel DebugBar** - Real-time debugging (if installed)
-
-### 🎨 **NEW: Figma Design Integration**
-- **Design-to-code workflows** - Convert Figma designs directly to Laravel/Livewire components
-- **Automatic design token extraction** - Colors, typography, and spacing for Tailwind CSS
-- **Component specifications** - Get precise implementation details from Figma designs
-- **Seamless integration** - Works with your existing Laravel + Livewire + Filament + Tailwind stack
 
 The installer intelligently sets up global servers once and adds project-specific servers for each Laravel project.
 
@@ -33,7 +26,7 @@ The installer intelligently sets up global servers once and adds project-specifi
 Run this single command from your Laravel project root:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/install.sh | bash
 ```
 
 ### Option 2: With Tokens Pre-configured
@@ -42,8 +35,7 @@ If you want to skip the interactive prompts:
 
 ```bash
 export GITHUB_TOKEN="your_github_personal_access_token"
-export FIGMA_ACCESS_TOKEN="your_figma_access_token"
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/install.sh | bash
 ```
 
 ### Option 3: Download and Run
@@ -52,7 +44,7 @@ For more control or if you prefer to review the script first:
 
 ```bash
 # Download the script
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh -o setup.sh
+curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/install.sh -o setup.sh
 
 # Make it executable
 chmod +x setup.sh
@@ -70,7 +62,6 @@ Before running the installer, make sure you have:
 3. **Go 1.22+** installed (for database MCP server)
 4. **A Laravel project** with `.env` file configured
 5. **GitHub Personal Access Token** (the installer will guide you)
-6. **Figma Personal Access Token** (optional, for design integration)
 
 ## 🔑 Token Setup
 
@@ -84,15 +75,6 @@ You'll need a GitHub Personal Access Token for private repository access:
    - ✅ `repo` (Full control of private repositories)
    - ✅ `read:user` (Read user profile data)
    - ✅ `user:email` (Access user email addresses)
-4. Copy the generated token when prompted by the installer
-
-### 🎨 Figma Token Setup (Optional)
-
-For design-to-code workflows:
-
-1. Go to [Figma Settings → Personal access tokens](https://www.figma.com/settings/account)
-2. Click "Create new token"
-3. Give it a descriptive name (e.g., "Claude Code MCP")
 4. Copy the generated token when prompted by the installer
 
 ## 🎮 Usage After Installation
@@ -115,11 +97,6 @@ Then test everything works:
 - "List recent commits from my private GitHub repo"
 - "Show me open pull requests"
 - "What's the current branch status?"
-
-### 🎨 Figma Design Integration
-- "Analyze this Figma design: https://www.figma.com/design/ABC123/MyProject"
-- "Convert this Figma button component to a Livewire component"
-- "Extract the color palette from this Figma file for Tailwind CSS"
 
 ### 🧠 Memory & Learning
 - "Remember that we use Filament for admin panels"
@@ -146,7 +123,6 @@ The script intelligently manages global vs project-specific resources:
 2. **Memory MCP Server** - Shared knowledge base
 3. **Context7** - Documentation access 
 4. **Web Fetch** - External API access
-5. **Figma MCP Server** - Design file access and analysis
 
 ### Project-Specific MCP Servers (per Laravel project)
 1. **Filesystem MCP Server** - Access to your project files
@@ -169,41 +145,6 @@ The script intelligently manages global vs project-specific resources:
 
 The installer automatically configures everything based on your Laravel `.env` file.
 
-## 🎨 Figma Integration Features
-
-### Design-to-Code Workflow
-```mermaid
-graph LR
-    A[Figma Design] --> B[Share URL with Claude]
-    B --> C[Analyze Design Structure]
-    C --> D[Extract Design Tokens]
-    D --> E[Generate Laravel Components]
-    E --> F[Apply Tailwind Styling]
-    F --> G[Add Alpine.js Interactions]
-```
-
-### Example Figma Commands
-```bash
-# Analyze a complete design
-> Please analyze this Figma design and create the corresponding Laravel views
-
-# Extract design system
-> Extract all colors, typography, and spacing from this Figma file for our Tailwind config
-
-# Create specific components
-> Convert this Figma card component to a Livewire component with proper validation
-
-# Generate admin interface
-> Create a Filament resource based on this Figma admin panel design
-```
-
-### Supported Figma Features
-- ✅ **Design token extraction** - Colors, typography, spacing
-- ✅ **Component analysis** - Buttons, forms, cards, layouts
-- ✅ **Layout understanding** - Grid systems, responsive design
-- ✅ **Auto-layout interpretation** - Flexbox and grid generation
-- ✅ **Style guide creation** - Consistent design system implementation
-
 ## 🔧 Advanced Configuration
 
 ### Multiple Projects
@@ -223,7 +164,7 @@ If you're running via `curl | bash` and the interactive prompts aren't working:
 
 ```bash
 # Download and run directly for interactive mode
-curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh -o setup.sh
+curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/install.sh -o setup.sh
 chmod +x setup.sh
 ./setup.sh
 ```
@@ -244,12 +185,6 @@ nano ~/.claude.json
 
 # Add your token to the GitHub MCP server configuration
 ```
-
-### Figma Integration Not Working?
-
-1. Verify your Figma token is valid
-2. Check that the file you're trying to access is not private (unless you have access)
-3. Use the full Figma URL format: `https://www.figma.com/design/FILE_KEY/File-Name`
 
 ### Database Connection Failed?
 
@@ -274,12 +209,6 @@ npm --version
 
 ## 🆕 What's in v1.0
 
-### 🎨 Figma Integration
-- **Complete design-to-code workflow** with Framelink Figma MCP Server
-- **Automatic design token extraction** for Tailwind CSS
-- **Interactive token management** with proper update prompts
-- **Laravel-specific design patterns** and component generation
-
 ### 🔧 Enhanced User Experience
 - **Improved interactive detection** - Works correctly with `curl | bash`
 - **Better token management** - Proper prompts for token updates
@@ -298,9 +227,8 @@ npm --version
 
 ## 🔗 Links & Resources
 
-- **Repository**: [github.com/laraben/laravel-claude-code-setup](https://github.com/laraben/laravel-claude-code-setup)
+- **Repository**: [github.com/neverything/laravel-claude-code-setup](https://github.com/neverything/laravel-claude-code-setup)
 - **Claude Code**: [claude.ai/code](https://claude.ai/code)
-- **Figma MCP Documentation**: [framelink.ai](https://framelink.ai)
 - **Laravel Documentation**: [laravel.com/docs](https://laravel.com/docs)
 
 ## 🤝 Contributing
@@ -321,7 +249,6 @@ MIT License - feel free to use this in your projects!
 
 - **Claude Code team** for the amazing AI development platform
 - **Laravel community** for the incredible framework and ecosystem
-- **Figma team** for the design tools and API
 - **MCP Server developers** for the various integration tools
 
 ---

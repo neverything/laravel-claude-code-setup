@@ -53,7 +53,7 @@ check_laravel_project() {
         echo ""
         echo "Usage:"
         echo "  cd /path/to/your/laravel/project"
-        echo "  curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/install.sh | bash"
+        echo "  curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/install.sh | bash"
         echo ""
         exit 1
     fi
@@ -115,7 +115,7 @@ run_setup() {
     
     # Download and execute directly (no temp files)
     print_status "Downloading main installation script..."
-    if ! curl -fsSL https://raw.githubusercontent.com/laraben/laravel-claude-code-setup/main/scripts/setup-claude-laravel.sh | bash; then
+    if ! curl -fsSL https://raw.githubusercontent.com/neverything/laravel-claude-code-setup/main/scripts/setup-claude-code-laravel.sh | bash; then
         print_error "Failed to download or execute installation script"
         print_error "Please check your internet connection and try again"
         exit 1
@@ -140,8 +140,8 @@ main() {
     echo "4. Try: 'Run php artisan route:list'"
     echo "5. Start coding with AI assistance!"
     echo ""
-    echo "📖 Documentation: https://github.com/laraben/laravel-claude-code-setup"
-    echo "🆘 Need help? https://github.com/laraben/laravel-claude-code-setup/issues"
+    echo "📖 Documentation: https://github.com/neverything/laravel-claude-code-setup"
+    echo "🆘 Need help? https://github.com/neverything/laravel-claude-code-setup/issues"
     echo ""
 }
 
