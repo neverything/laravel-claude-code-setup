@@ -241,7 +241,7 @@ if [ "$UNINSTALL_SCOPE" = "complete" ]; then
         "@modelcontextprotocol/server-filesystem"
         "@modelcontextprotocol/server-github" 
         "@modelcontextprotocol/server-memory"
-        "@sebdesign/debugbar-mcp-server"
+        "@021factory/laravel-debugbar-mcp"
     )
     
     for package in "${NPM_PACKAGES[@]}"; do
