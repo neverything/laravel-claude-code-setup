@@ -934,10 +934,27 @@ configure_claude_mcp() {
     # Add Laravel DebugBar MCP if available
     if grep -q "barryvdh/laravel-debugbar" composer.json 2>/dev/null; then
         print_status "Adding Laravel DebugBar MCP server for $PROJECT_NAME..."
-        if LARAVEL_PROJECT_PATH="$PROJECT_PATH" claude mcp add "debugbar-$PROJECT_ID" npx @sebdesign/debugbar-mcp-server; then
-            print_success "Laravel DebugBar MCP server added: debugbar-$PROJECT_ID"
+
+        cd "$MCP_DIR"
+
+        # Clone the correct repository
+        if [ ! -d "laravel-debugbar-mcp" ]; then
+            if git clone https://github.com/021-factory/laravel-debugbar-mcp.git laravel-debugbar-mcp; then
+                cd laravel-debugbar-mcp
+                npm install
+                npm run build
+                print_success "Laravel DebugBar MCP Server installed!"
+            else
+                print_error "Failed to clone Laravel DebugBar MCP repository"
+                return 1
+            fi
         else
-            print_warning "Failed to add Laravel DebugBar MCP server"
+            print_status "Laravel DebugBar MCP already cloned, updating..."
+            cd laravel-debugbar-mcp
+            git pull
+            npm install
+            npm run build
+            print_success "Laravel DebugBar MCP Server updated!"
         fi
     fi
     
