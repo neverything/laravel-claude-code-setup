@@ -44,7 +44,7 @@ Run: `composer refactor:rector && composer refactor:lint && composer test`
 > Why: You can lose track of what's actually working. These checkpoints prevent cascading failures.
 
 ### 🚨 CRITICAL: Hook Failures Are BLOCKING
-**When hooks report ANY issues (exit code 1), you MUST:**
+**When hooks report ANY issues (exit code 2), you MUST:**
 1. **STOP IMMEDIATELY** - Do not continue with other tasks
 2. **FIX ALL ISSUES** - Address every ❌ issue until everything is ✅ GREEN
 3. **VERIFY THE FIX** - Re-run the failed command to confirm it's fixed
