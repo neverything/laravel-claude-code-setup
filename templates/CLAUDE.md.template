@@ -39,7 +39,7 @@ Say: "I'll spawn agents to tackle different aspects of this problem" whenever a 
 - Before declaring "done"
 - **WHEN HOOKS FAIL WITH ERRORS** ❌
 
-Run: `composer refactor && composer test && composer lint`
+Run: `composer refactor:rector && composer refactor:lint && composer test`
 
 > Why: You can lose track of what's actually working. These checkpoints prevent cascading failures.
 

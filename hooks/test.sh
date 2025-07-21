@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Laravel Test Hook for Claude Code
 # Runs composer test command and checks for missing test files
-# Exit code 1 on test failures or missing required tests to block Claude Code
+# Exit code 2 on test failures or missing required tests to block Claude Code
 
 set +e  # Don't exit on first error
 
@@ -12,16 +12,28 @@ YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# Print header
-echo ""
-echo -e "${BLUE}🧪 Laravel Test Suite${NC}"
-echo "────────────────────────"
+# Error tracking
+declare -a CLAUDE_HOOKS_SUMMARY=()
+declare -i CLAUDE_HOOKS_ERROR_COUNT=0
 
-# Check if we're in a Laravel project
-if [[ ! -f "artisan" ]] || [[ ! -f "composer.json" ]]; then
-    echo -e "${YELLOW}⚠️  Not a Laravel project - skipping tests${NC}"
-    exit 0
-fi
+# Add error function
+add_error() {
+    local message="$1"
+    CLAUDE_HOOKS_ERROR_COUNT+=1
+    CLAUDE_HOOKS_SUMMARY+=("${RED}❌${NC} $message")
+}
+
+# Print summary function
+print_summary() {
+    if [[ $CLAUDE_HOOKS_ERROR_COUNT -gt 0 ]]; then
+        echo -e "\n${RED}═══ Issues Found ═══${NC}" >&2
+        for item in "${CLAUDE_HOOKS_SUMMARY[@]}"; do
+            echo -e "$item" >&2
+        done
+        echo -e "\n${RED}Found $CLAUDE_HOOKS_ERROR_COUNT issue(s) that MUST be fixed!${NC}" >&2
+        echo -e "${RED}❌ Fix ALL issues above before continuing!${NC}" >&2
+    fi
+}
 
 # Check if we have input (hook mode) or running standalone
 FILE_PATH=""
@@ -191,39 +203,72 @@ find_test_file() {
     return 1
 }
 
-# Check for missing test file if a specific file was edited
-if [[ -n "$FILE_PATH" ]] && [[ "$FILE_PATH" =~ \.php$ ]]; then
-    # Check if this file requires tests
-    if ! should_skip_test_requirement "$FILE_PATH"; then
-        # Try to find the test file
-        if ! test_file=$(find_test_file "$FILE_PATH"); then
-            echo -e "${RED}❌ Missing required test file for: $FILE_PATH${NC}"
-            echo -e "${YELLOW}📝 Create a test file in one of these locations:${NC}"
-            
-            base=$(basename "$FILE_PATH" .php)
-            echo -e "${YELLOW}   - tests/Unit/${base}Test.php${NC}"
-            echo -e "${YELLOW}   - tests/Feature/${base}Test.php${NC}"
-            
-            echo -e "\n${RED}Create and implement the test file before continuing.${NC}"
-            exit 1
+# Main function
+main() {
+    # Print header
+    echo "" >&2
+    echo -e "${BLUE}🧪 Laravel Test Suite${NC}" >&2
+    echo "────────────────────────" >&2
+    
+    # Check if we're in a Laravel project
+    if [[ ! -f "artisan" ]] || [[ ! -f "composer.json" ]]; then
+        echo -e "${YELLOW}⚠️  Not a Laravel project - skipping tests${NC}" >&2
+        return 0
+    fi
+    
+    # Check for missing test file if a specific file was edited
+    if [[ -n "$FILE_PATH" ]] && [[ "$FILE_PATH" =~ \.php$ ]]; then
+        # Check if this file requires tests
+        if ! should_skip_test_requirement "$FILE_PATH"; then
+            # Try to find the test file
+            if ! test_file=$(find_test_file "$FILE_PATH"); then
+                echo -e "${RED}❌ Missing required test file for: $FILE_PATH${NC}" >&2
+                echo -e "${YELLOW}📝 Create a test file in one of these locations:${NC}" >&2
+                
+                base=$(basename "$FILE_PATH" .php)
+                echo -e "${YELLOW}   - tests/Unit/${base}Test.php${NC}" >&2
+                echo -e "${YELLOW}   - tests/Feature/${base}Test.php${NC}" >&2
+                
+                add_error "Missing required test file for: $FILE_PATH"
+                return 2
+            fi
         fi
     fi
-fi
+    
+    # Check if composer test script exists
+    if ! composer run-script --list | grep -q "test:pest"; then
+        echo -e "${YELLOW}⚠️  No 'test:pest' script found in composer.json${NC}" >&2
+        return 0
+    fi
+    
+    # Run composer test
+    echo -e "\n${BLUE}Running tests...${NC}" >&2
+    local test_output
+    if ! test_output=$(composer test:pest 2>&1); then
+        echo -e "\n${RED}❌ Tests failed!${NC}" >&2
+        echo "$test_output" >&2
+        add_error "Tests failed"
+        return 2
+    fi
+    
+    # Success
+    echo -e "\n${GREEN}✅ Tests passed!${NC}" >&2
+    return 0
+}
 
-# Check if composer test script exists
-if ! composer run-script --list | grep -q "test"; then
-    echo -e "${YELLOW}⚠️  No 'test' script found in composer.json${NC}"
-    exit 0
-fi
+# Run main function
+main
+exit_code=$?
 
-# Run composer test
-echo -e "\n${BLUE}Running tests...${NC}"
-if ! composer test:pest 2>&1; then
-    echo -e "\n${RED}❌ Tests failed!${NC}"
-    echo -e "${RED}Fix the failing tests before continuing.${NC}"
-    exit 1
-fi
+# Print summary
+print_summary
 
-# Success - exit cleanly
-echo -e "\n${GREEN}✅ All tests passed!${NC}"
-exit 0
+# Final message and exit
+if [[ $exit_code -eq 2 ]]; then
+    echo -e "\n${RED}🛑 FAILED - Fix all issues above! 🛑${NC}" >&2
+    exit 2
+else
+    # Exit with 2 so Claude sees the continuation message
+    echo -e "\n${YELLOW}👉 Tests pass. Continue with your task.${NC}" >&2
+    exit 2
+fi
