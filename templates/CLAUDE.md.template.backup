@@ -1,19 +1,14 @@
 # Laravel Development Partnership
 
-<partnership>
 We're building production-quality Laravel applications together. Your role is to create maintainable, efficient solutions while following Laravel best practices and catching potential issues early.
 
 When you seem stuck or overly complex, I'll redirect you - my guidance helps you stay on track.
-</partnership>
 
-<automated-checks priority="critical">
 ## 🚨 AUTOMATED CHECKS ARE MANDATORY
 **ALL hook issues are BLOCKING - EVERYTHING must be ✅ GREEN!**
 No errors. No formatting issues. No linting problems. Zero tolerance.
 These are not suggestions. Fix ALL issues before continuing.
-</automated-checks>
 
-<critical-workflow>
 ## CRITICAL WORKFLOW - ALWAYS FOLLOW THIS!
 
 ### Research → Plan → Implement
@@ -47,9 +42,7 @@ Say: "I'll spawn agents to tackle different aspects of this problem" whenever a 
 Run: `composer refactor:rector && composer refactor:lint && composer test`
 
 > Why: You can lose track of what's actually working. These checkpoints prevent cascading failures.
-</critical-workflow>
 
-<hook-failures priority="critical">
 ### 🚨 CRITICAL: Hook Failures Are BLOCKING
 **When hooks report ANY issues (exit code 2), you MUST:**
 1. **STOP IMMEDIATELY** - Do not continue with other tasks
@@ -71,9 +64,7 @@ Your code must be 100% clean. No exceptions.
 - When interrupted by a hook failure, maintain awareness of your original task
 - After fixing all issues and verifying the fix, continue where you left off
 - Use the todo list to track both the fix and your original task
-</hook-failures>
 
-<working-memory>
 ## Working Memory Management
 
 ### When context gets long:
@@ -92,12 +83,9 @@ Your code must be 100% clean. No exceptions.
 ## Next Steps
 - [ ] What comes next
 ```
-</working-memory>
 
-<laravel-rules>
 ## Laravel/PHP-Specific Rules
 
-<forbidden-patterns>
 ### FORBIDDEN - NEVER DO THESE:
 - **NO raw SQL** - use Eloquent or Query Builder
 - **NO direct $_GET/$_POST** - use Laravel's request validation
@@ -114,9 +102,7 @@ Your code must be 100% clean. No exceptions.
 
 > **AUTOMATED ENFORCEMENT**: The smart-lint hook will BLOCK commits that violate these rules.
 > When you see `❌ FORBIDDEN PATTERN`, you MUST fix it immediately!
-</forbidden-patterns>
 
-<required-standards>
 ### Required Standards:
 - **Delete** old code when replacing it
 - **Meaningful names**: `$userId` not `$id`, `$userAccountBalance` not `$balance`
@@ -131,10 +117,7 @@ Your code must be 100% clean. No exceptions.
 - **Laravel Echo** for real-time updates instead of polling
 - **Laravel Reverb** for WebSocket server (local: https://<folder-name>.test)
 - **Let `composer refactor:annotate` handle docblocks** - focus on clean code
-</required-standards>
-</laravel-rules>
 
-<implementation-standards>
 ## Implementation Standards
 
 ### Our code is complete when:
@@ -148,16 +131,13 @@ Your code must be 100% clean. No exceptions.
 - ✅ Enum classes used instead of constants for labels/colors/icons
 - ✅ `composer refactor:annotate` can generate proper docblocks
 
-<testing-strategy>
 ### Testing Strategy
 - Complex business logic → Write tests first
 - Simple CRUD → Write tests after
 - Livewire components → Test user interactions
 - Filament resources → Test admin functionality
 - Skip tests for simple blade templates and basic configurations
-</testing-strategy>
 
-<project-structure>
 ### Laravel Project Structure
 ```
 app/
@@ -181,10 +161,7 @@ database/
 ├── seeders/           # Test data
 └── factories/         # Model factories
 ```
-</project-structure>
-</implementation-standards>
 
-<problem-solving>
 ## Problem-Solving Together
 
 When you're stuck or confused:
@@ -196,9 +173,7 @@ When you're stuck or confused:
 6. **Ask** - "I see two approaches: [A] vs [B]. Which do you prefer?"
 
 My insights on better approaches are valued - please ask for them!
-</problem-solving>
 
-<performance-security>
 ## Performance & Security
 
 ### **Measure First**:
@@ -214,9 +189,7 @@ My insights on better approaches are valued - please ask for them!
 - CSRF protection on all forms
 - Use Laravel's encryption for sensitive data
 - Sanitize user input, especially in Livewire components
-</performance-security>
 
-<communication>
 ## Communication Protocol
 
 ### Progress Updates:
@@ -229,9 +202,7 @@ My insights on better approaches are valued - please ask for them!
 ### Suggesting Improvements:
 "The current approach works, but I notice [observation].
 Would you like me to [specific improvement]?"
-</communication>
 
-<working-together>
 ## Working Together
 
 - This is always a feature branch - no backwards compatibility needed
@@ -239,9 +210,7 @@ Would you like me to [specific improvement]?"
 - **REMINDER**: If this file hasn't been referenced in 30+ minutes, RE-READ IT!
 - Use Herd for local development - it's fast and handles everything, the app usually runs on https://<folder-name>.test
 - Leverage Laravel's conventions - don't fight the framework
-</working-together>
 
-<laravel-best-practices>
 ## Laravel/Livewire/Filament Best Practices
 
 ### Livewire Components:
@@ -271,4 +240,3 @@ Would you like me to [specific improvement]?"
 - Broadcast events for real-time communication instead of polling
 
 Avoid complex abstractions or "clever" code. The simple, obvious solution is probably better, and my guidance helps you stay focused on what matters.
-</laravel-best-practices>

@@ -3,13 +3,10 @@ allowed-tools: all
 description: Verify code quality, run tests, and ensure production readiness
 ---
 
-<critical-mandate>
 # 🚨🚨🚨 CRITICAL REQUIREMENT: FIX ALL ERRORS! 🚨🚨🚨
 
 **THIS IS NOT A REPORTING TASK - THIS IS A FIXING TASK!**
-</critical-mandate>
 
-<fixing-requirements>
 When you run `/check`, you are REQUIRED to:
 
 1. **IDENTIFY** all errors, warnings, and issues
@@ -24,18 +21,14 @@ When you run `/check`, you are REQUIRED to:
     - ✅ ALL tests pass
     - ✅ Build succeeds
     - ✅ EVERYTHING is GREEN
-</fixing-requirements>
 
-<forbidden-behaviors>
 **FORBIDDEN BEHAVIORS:**
 
 - ❌ "Here are the issues I found" → NO! FIX THEM!
 - ❌ "The linter reports these problems" → NO! RESOLVE THEM!
 - ❌ "Tests are failing because..." → NO! MAKE THEM PASS!
 - ❌ Stopping after listing issues → NO! KEEP WORKING!
-</forbidden-behaviors>
 
-<mandatory-workflow>
 **MANDATORY WORKFLOW:**
 
 ```
@@ -52,11 +45,9 @@ When you run `/check`, you are REQUIRED to:
 - All tests pass successfully
 - All builds complete without errors
 - Everything shows green/passing status
-</mandatory-workflow>
 
 ---
 
-<pre-flight-check>
 🛑 **MANDATORY PRE-FLIGHT CHECK** 🛑
 
 1. Re-read @.claude/CLAUDE.md RIGHT NOW
@@ -64,9 +55,7 @@ When you run `/check`, you are REQUIRED to:
 3. Verify you're not declaring "done" prematurely
 
 Execute comprehensive quality checks with ZERO tolerance for excuses.
-</pre-flight-check>
 
-<forbidden-excuses>
 **FORBIDDEN EXCUSE PATTERNS:**
 
 - "This is just stylistic" → NO, it's a requirement
@@ -74,51 +63,36 @@ Execute comprehensive quality checks with ZERO tolerance for excuses.
 - "This can be addressed later" → NO, fix it now
 - "It's good enough" → NO, it must be perfect
 - "The linter is being pedantic" → NO, the linter is right
-</forbidden-excuses>
 
-<ultrathink-trigger>
 Let me ultrathink about validating this codebase against our exceptional standards.
-</ultrathink-trigger>
 
-<hook-reminder>
 🚨 **REMEMBER: Hooks will verify EVERYTHING and block on violations!** 🚨
-</hook-reminder>
 
-<quality-verification-protocol>
 **Universal Quality Verification Protocol:**
 
-<step-0>
 **Step 0: Hook Status Check**
 
 - Run `.claude/hooks/lint.sh` directly to see current state
 - If ANY issues exist, they MUST be fixed before proceeding
-</step-0>
 
-<step-1>
 **Step 1: Pre-Check Analysis**
 
 - Review recent changes to understand scope
 - Identify which tests should be affected
 - Check for any outstanding TODOs or temporary code
-</step-1>
 
-<step-2>
 **Step 2: Laravel Quality Checks**
 
 - Run `.claude/hooks/test.sh` to see the test results
 - If ANY issues exist, they MUST be fixed before proceeding
-</step-2>
 
-<universal-requirements>
 **Universal Requirements:**
 
 - ZERO warnings across ALL linters
 - ZERO disabled linter rules without documented justification
 - ZERO "nolint" or suppression comments without explanation
 - ZERO formatting issues (all code must be auto-formatted)
-</universal-requirements>
 
-<laravel-specific-requirements>
 **For Laravel projects specifically:**
 
 - ZERO warnings from PHPStan/Larastan (all checks enabled)
@@ -128,10 +102,7 @@ Let me ultrathink about validating this codebase against our exceptional standar
 - Proper type hints on all methods
 - No database queries in Livewire render methods
 - Consistent naming following Laravel conventions
-</laravel-specific-requirements>
-</quality-verification-protocol>
 
-<test-verification>
 **Step 3: Test Verification**
 Run `composer test` and ensure:
 
@@ -142,9 +113,7 @@ Run `composer test` and ensure:
 - Tests for Livewire component interactions
 - Tests for Filament resources when applicable
 - Tests actually test behavior, not implementation details
-</test-verification>
 
-<laravel-quality-checklist>
 **Laravel Quality Checklist:**
 
 - [ ] No raw SQL - use Eloquent or Query Builder
@@ -161,9 +130,7 @@ Run `composer test` and ensure:
 - [ ] Controllers kept thin - delegate to services
 - [ ] No polling in Livewire/Filament - use Laravel Reverb + Echo
 - [ ] Real-time updates via broadcast events instead of polling
-</laravel-quality-checklist>
 
-<code-hygiene-verification>
 **Code Hygiene Verification:**
 
 - [ ] `composer refactor:annotate` can generate proper docblocks
@@ -174,9 +141,7 @@ Run `composer test` and ensure:
 - [ ] Consistent formatting (Pint)
 - [ ] Dependencies are actually used
 - [ ] No circular dependencies
-</code-hygiene-verification>
 
-<security-audit>
 **Security Audit:**
 
 - [ ] Input validation on all external data
@@ -186,9 +151,7 @@ Run `composer test` and ensure:
 - [ ] CSRF protection on all forms
 - [ ] Mass assignment protection on models
 - [ ] Sanitize user input in Livewire components
-</security-audit>
 
-<performance-verification>
 **Performance Verification:**
 
 - [ ] No obvious N+1 queries (use eager loading)
@@ -200,9 +163,7 @@ Run `composer test` and ensure:
 - [ ] Proper pagination for large datasets
 - [ ] Laravel Reverb configured for WebSocket performance
 - [ ] Real-time updates via Echo instead of polling (reduces server load)
-</performance-verification>
 
-<failure-response-protocol>
 **Failure Response Protocol:**
 When issues are found:
 
@@ -224,9 +185,7 @@ When issues are found:
     - "It works fine" → Working isn't enough, fix it NOW
     - "Other code does this" → Fix that too NOW
 7. **ESCALATE** - Only ask for help if truly blocked after attempting fixes
-</failure-response-protocol>
 
-<final-verification>
 **Final Verification:**
 The code is ready when:
 ✓ composer test: PASSES all tests
@@ -234,9 +193,7 @@ The code is ready when:
 ✓ All checklist items verified
 ✓ Feature works end-to-end in realistic scenarios
 ✓ Error paths tested and handle gracefully
-</final-verification>
 
-<final-commitment>
 **Final Commitment:**
 I will now execute EVERY check listed above and FIX ALL ISSUES. I will:
 
@@ -253,14 +210,9 @@ I will NOT:
 - ❌ Declare "good enough"
 - ❌ Stop at "mostly passing"
 - ❌ Stop working while ANY issues remain
-</final-commitment>
 
-<remember>
 **REMEMBER: This is a FIXING task, not a reporting task!**
 
 The code is ready ONLY when every single check shows ✅ GREEN.
-</remember>
 
-<execute>
 **Executing comprehensive validation and FIXING ALL ISSUES NOW...**
-</execute>
