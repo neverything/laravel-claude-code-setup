@@ -168,28 +168,49 @@ find_test_file() {
     local base=$(basename "$file" .php)
     local dir=$(dirname "$file")
     
-    # Potential test file locations
+    # Extract the relative path from app/ directory
+    local relative_path=""
+    if [[ "$dir" =~ app/(.+) ]]; then
+        relative_path="${BASH_REMATCH[1]}"
+    fi
+    
+    # Start with basic test file locations
     local test_candidates=(
         "tests/Unit/${base}Test.php"
         "tests/Feature/${base}Test.php"
-        "tests/Unit/$(basename "$dir")/${base}Test.php"
-        "tests/Feature/$(basename "$dir")/${base}Test.php"
     )
     
-    # For Livewire components
-    if [[ "$dir" =~ app/Livewire ]] || [[ "$dir" =~ app/Http/Livewire ]]; then
+    # If we have a relative path from app/, add all possible subdirectory combinations
+    if [[ -n "$relative_path" ]]; then
+        # Full path preservation
         test_candidates+=(
-            "tests/Feature/Livewire/${base}Test.php"
-            "tests/Unit/Livewire/${base}Test.php"
+            "tests/Unit/${relative_path}/${base}Test.php"
+            "tests/Feature/${relative_path}/${base}Test.php"
         )
-    fi
-    
-    # For Filament resources
-    if [[ "$dir" =~ app/Filament ]]; then
+        
+        # Just the immediate parent directory
+        local parent_dir=$(basename "$dir")
         test_candidates+=(
-            "tests/Feature/Filament/${base}Test.php"
-            "tests/Unit/Filament/${base}Test.php"
+            "tests/Unit/${parent_dir}/${base}Test.php"
+            "tests/Feature/${parent_dir}/${base}Test.php"
         )
+        
+        # For nested paths, try intermediate levels
+        # e.g., app/Filament/Pages/Onboarding/BrandLogos.php could have tests in:
+        # - tests/Feature/Filament/Pages/Onboarding/BrandLogosTest.php
+        # - tests/Feature/Pages/Onboarding/BrandLogosTest.php
+        # - tests/Feature/Onboarding/BrandLogosTest.php
+        local path_parts=(${relative_path//\// })
+        if [[ ${#path_parts[@]} -gt 1 ]]; then
+            for ((i=0; i<${#path_parts[@]}; i++)); do
+                local partial_path="${path_parts[@]:$i}"
+                partial_path="${partial_path// //}"
+                test_candidates+=(
+                    "tests/Unit/${partial_path}/${base}Test.php"
+                    "tests/Feature/${partial_path}/${base}Test.php"
+                )
+            done
+        fi
     fi
     
     # Check each candidate
@@ -226,8 +247,25 @@ main() {
                 echo -e "${YELLOW}📝 Create a test file in one of these locations:${NC}" >&2
                 
                 base=$(basename "$FILE_PATH" .php)
+                dir=$(dirname "$FILE_PATH")
+                
+                # Basic locations
                 echo -e "${YELLOW}   - tests/Unit/${base}Test.php${NC}" >&2
                 echo -e "${YELLOW}   - tests/Feature/${base}Test.php${NC}" >&2
+                
+                # If file is in a subdirectory under app/, suggest subdirectory-based locations
+                if [[ "$dir" =~ app/(.+) ]]; then
+                    relative_path="${BASH_REMATCH[1]}"
+                    echo -e "${YELLOW}   - tests/Unit/${relative_path}/${base}Test.php${NC}" >&2
+                    echo -e "${YELLOW}   - tests/Feature/${relative_path}/${base}Test.php${NC}" >&2
+                    
+                    # Also suggest just the parent directory
+                    parent_dir=$(basename "$dir")
+                    if [[ "$parent_dir" != "$relative_path" ]]; then
+                        echo -e "${YELLOW}   - tests/Unit/${parent_dir}/${base}Test.php${NC}" >&2
+                        echo -e "${YELLOW}   - tests/Feature/${parent_dir}/${base}Test.php${NC}" >&2
+                    fi
+                fi
                 
                 add_error "Missing required test file for: $FILE_PATH"
                 return 2
