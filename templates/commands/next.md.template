@@ -14,7 +14,7 @@ You are tasked with implementing: $ARGUMENTS
 <mandatory-sequence>
 **MANDATORY SEQUENCE:**
 1. 🔍 **RESEARCH FIRST** - "Let me research the codebase and create a plan before implementing"
-2. 📋 **PLAN** - Present a detailed plan and verify approach
+2. 📋 **PLAN** - Present a detailed plan and verify approach and wait for my approval
 3. ✅ **IMPLEMENT** - Execute with validation checkpoints
 
 **YOU MUST SAY:** "Let me research the codebase and create a plan before implementing."
