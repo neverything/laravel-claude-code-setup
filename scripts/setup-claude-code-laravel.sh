@@ -957,6 +957,48 @@ create_project_prompts() {
         return 1
     fi
     
+    # Create rules directory and copy rule files
+    if ! mkdir -p ".claude/rules"; then
+        print_error "Failed to create .claude/rules directory in $PROJECT_PATH"
+        return 1
+    fi
+    
+    # Create agents directory and copy agent files
+    if ! mkdir -p ".claude/agents"; then
+        print_error "Failed to create .claude/agents directory in $PROJECT_PATH"
+        return 1
+    fi
+    
+    # Get the setup directory path
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SETUP_DIR="$(dirname "$SCRIPT_DIR")"
+    
+    # Copy rule files
+    if [ -d "$SETUP_DIR/templates/rules" ]; then
+        print_status "Copying rule files..."
+        for rule_file in "$SETUP_DIR/templates/rules"/*.json; do
+            if [ -f "$rule_file" ]; then
+                cp "$rule_file" ".claude/rules/"
+                print_status "Copied $(basename "$rule_file")"
+            fi
+        done
+    else
+        print_warning "Rules templates directory not found at $SETUP_DIR/templates/rules"
+    fi
+    
+    # Copy agent files
+    if [ -d "$SETUP_DIR/templates/agents" ]; then
+        print_status "Copying agent files..."
+        for agent_file in "$SETUP_DIR/templates/agents"/*.md; do
+            if [ -f "$agent_file" ]; then
+                cp "$agent_file" ".claude/agents/"
+                print_status "Copied $(basename "$agent_file")"
+            fi
+        done
+    else
+        print_warning "Agents templates directory not found at $SETUP_DIR/templates/agents"
+    fi
+    
     # Verify directories were created
     if [ ! -d ".claude" ]; then
         print_error ".claude directory was not created successfully"

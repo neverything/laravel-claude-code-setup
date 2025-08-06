@@ -1,266 +1,64 @@
 ---
 allowed-tools: all
-description: Verify code quality, run tests, and ensure production readiness
+description: Verify code quality and fix all issues
 ---
 
-<critical-mandate>
-# 🚨🚨🚨 CRITICAL REQUIREMENT: FIX ALL ERRORS! 🚨🚨🚨
+<agent-spawn immediate="true">
+# 🚨 SPAWN FIX AGENTS NOW!
 
-**THIS IS NOT A REPORTING TASK - THIS IS A FIXING TASK!**
-</critical-mandate>
+**Your mission**: Achieve 100% green status across all checks.
 
-<fixing-requirements>
-When you run `/check`, you are REQUIRED to:
+## Immediate Actions
 
-1. **IDENTIFY** all errors, warnings, and issues
-2. **FIX EVERY SINGLE ONE** - not just report them!
-3. **USE MULTIPLE AGENTS** to fix issues in parallel:
-    - Spawn one agent to fix linting issues
-    - Spawn another to fix test failures
-    - Spawn more agents for different files/modules
-    - Say: "I'll spawn multiple agents to fix all these issues in parallel"
-4. **DO NOT STOP** until:
-    - ✅ ALL linters pass with ZERO warnings
-    - ✅ ALL tests pass
-    - ✅ Build succeeds
-    - ✅ EVERYTHING is GREEN
-</fixing-requirements>
-
-<forbidden-behaviors>
-**FORBIDDEN BEHAVIORS:**
-
-- ❌ "Here are the issues I found" → NO! FIX THEM!
-- ❌ "The linter reports these problems" → NO! RESOLVE THEM!
-- ❌ "Tests are failing because..." → NO! MAKE THEM PASS!
-- ❌ Stopping after listing issues → NO! KEEP WORKING!
-</forbidden-behaviors>
-
-<mandatory-workflow>
-**MANDATORY WORKFLOW:**
+1. **Spawn fix agents** for all issues found
+2. **Work in parallel** for maximum efficiency
+3. **Don't stop** until everything passes
 
 ```
-1. Run checks → Find issues
-2. IMMEDIATELY spawn agents to fix ALL issues
-3. Re-run checks → Find remaining issues
-4. Fix those too
-5. REPEAT until EVERYTHING passes
+I'm spawning multiple fix agents to resolve all issues:
+- Agent 1: Fix linting issues
+- Agent 2: Fix test failures
+- Agent 3: Fix type errors
+```
+</agent-spawn>
+
+<delegation-strategy>
+## Efficient Delegation
+
+Based on the issues found, spawn specialized agents:
+
+| Issue Type | Agent to Spawn | Parallel |
+|------------|---------------|----------|
+| Linting errors | fix-agent | ✅ Yes |
+| Test failures | fix-agent + test-agent | ✅ Yes |
+| Type errors | fix-agent | ✅ Yes |
+| Missing tests | test-agent | ✅ Yes |
+| Code smells | refactor-agent | ✅ Yes |
+
+Reference: `.claude/agents/fix-agent.md`
+</delegation-strategy>
+
+<quality-verification>
+## Verification Protocol
+
+Run these checks and FIX everything:
+```bash
+composer refactor:rector  # Code modernization
+composer refactor:lint    # Format fixing
+composer test:types       # Type checking
+composer test:pest        # Test suite
 ```
 
-**YOU ARE NOT DONE UNTIL:**
+**Success criteria**: ALL commands show ✅ GREEN
+</quality-verification>
 
-- All linters pass with zero warnings
-- All tests pass successfully
-- All builds complete without errors
-- Everything shows green/passing status
-</mandatory-workflow>
+<completion>
+## Task Complete When
 
----
+- ✅ Zero warnings from all linters
+- ✅ All tests passing
+- ✅ All hooks showing exit code 0
+- ✅ Code is production-ready
 
-<pre-flight-check>
-🛑 **MANDATORY PRE-FLIGHT CHECK** 🛑
-
-1. Re-read @.claude/CLAUDE.md RIGHT NOW
-2. Check current TODO.md status
-3. Verify you're not declaring "done" prematurely
-
-Execute comprehensive quality checks with ZERO tolerance for excuses.
-</pre-flight-check>
-
-<forbidden-excuses>
-**FORBIDDEN EXCUSE PATTERNS:**
-
-- "This is just stylistic" → NO, it's a requirement
-- "Most remaining issues are minor" → NO, ALL issues must be fixed
-- "This can be addressed later" → NO, fix it now
-- "It's good enough" → NO, it must be perfect
-- "The linter is being pedantic" → NO, the linter is right
-</forbidden-excuses>
-
-<ultrathink-trigger>
-Let me ultrathink about validating this codebase against our exceptional standards.
-</ultrathink-trigger>
-
-<hook-reminder>
-🚨 **REMEMBER: Hooks will verify EVERYTHING and block on violations!** 🚨
-</hook-reminder>
-
-<quality-verification-protocol>
-**Universal Quality Verification Protocol:**
-
-<step-0>
-**Step 0: Hook Status Check**
-
-- Run `.claude/hooks/lint.sh` directly to see current state
-- If ANY issues exist, they MUST be fixed before proceeding
-</step-0>
-
-<step-1>
-**Step 1: Pre-Check Analysis**
-
-- Review recent changes to understand scope
-- Identify which tests should be affected
-- Check for any outstanding TODOs or temporary code
-</step-1>
-
-<step-2>
-**Step 2: Laravel Quality Checks**
-
-- Run `.claude/hooks/test.sh` to see the test results
-- If ANY issues exist, they MUST be fixed before proceeding
-</step-2>
-
-<universal-requirements>
-**Universal Requirements:**
-
-- ZERO warnings across ALL linters
-- ZERO disabled linter rules without documented justification
-- ZERO "nolint" or suppression comments without explanation
-- ZERO formatting issues (all code must be auto-formatted)
-</universal-requirements>
-
-<laravel-specific-requirements>
-**For Laravel projects specifically:**
-
-- ZERO warnings from PHPStan/Larastan (all checks enabled)
-- No disabled linter rules without explicit justification
-- No raw SQL queries - use Eloquent/Query Builder
-- No direct $_GET/$_POST usage - use Laravel request validation
-- Proper type hints on all methods
-- No database queries in Livewire render methods
-- Consistent naming following Laravel conventions
-</laravel-specific-requirements>
-</quality-verification-protocol>
-
-<test-verification>
-**Step 3: Test Verification**
-Run `composer test` and ensure:
-
-- ALL Pest tests pass without flakiness
-- Test coverage is meaningful (not just high numbers)
-- Pest tests for complex business logic
-- No skipped tests without justification
-- Tests for Livewire component interactions
-- Tests for Filament resources when applicable
-- Tests actually test behavior, not implementation details
-</test-verification>
-
-<laravel-quality-checklist>
-**Laravel Quality Checklist:**
-
-- [ ] No raw SQL - use Eloquent or Query Builder
-- [ ] No direct $_GET/$_POST - use Laravel request validation
-- [ ] Type hints on all methods
-- [ ] Early returns to reduce nesting
-- [ ] Meaningful variable names ($userId not $id, $userAccountBalance not $balance)
-- [ ] Self-documenting code with clear variable names - no inline comments
-- [ ] Enum classes with methods (getLabel, getDescription, getColor, getIcon) instead of constants
-- [ ] Proper Eloquent relationships with return types
-- [ ] No database queries in Livewire render methods
-- [ ] Livewire actions for user interactions
-- [ ] Filament resources follow standard patterns
-- [ ] Controllers kept thin - delegate to services
-- [ ] No polling in Livewire/Filament - use Laravel Reverb + Echo
-- [ ] Real-time updates via broadcast events instead of polling
-</laravel-quality-checklist>
-
-<code-hygiene-verification>
-**Code Hygiene Verification:**
-
-- [ ] `composer refactor:annotate` can generate proper docblocks
-- [ ] No commented-out code blocks
-- [ ] No debugging dd() or dump() statements
-- [ ] No placeholder implementations
-- [ ] No inline comments within methods - code is self-documenting
-- [ ] Consistent formatting (Pint)
-- [ ] Dependencies are actually used
-- [ ] No circular dependencies
-</code-hygiene-verification>
-
-<security-audit>
-**Security Audit:**
-
-- [ ] Input validation on all external data
-- [ ] Database queries use Eloquent/Query Builder
-- [ ] No hardcoded secrets or credentials
-- [ ] Proper permission checks (Gates/Policies)
-- [ ] CSRF protection on all forms
-- [ ] Mass assignment protection on models
-- [ ] Sanitize user input in Livewire components
-</security-audit>
-
-<performance-verification>
-**Performance Verification:**
-
-- [ ] No obvious N+1 queries (use eager loading)
-- [ ] Livewire components don't query in render methods
-- [ ] Appropriate use of caching
-- [ ] Database indexes where needed
-- [ ] No unnecessary queries in loops
-- [ ] Efficient Eloquent relationships
-- [ ] Proper pagination for large datasets
-- [ ] Laravel Reverb configured for WebSocket performance
-- [ ] Real-time updates via Echo instead of polling (reduces server load)
-</performance-verification>
-
-<failure-response-protocol>
-**Failure Response Protocol:**
-When issues are found:
-
-1. **IMMEDIATELY SPAWN AGENTS** to fix issues in parallel:
-   ```
-   "I found 15 linting issues and 3 test failures. I'll spawn agents to fix these:
-   - Agent 1: Fix linting issues in files A, B, C
-   - Agent 2: Fix linting issues in files D, E, F
-   - Agent 3: Fix the failing tests
-   Let me tackle all of these in parallel..."
-   ```
-2. **FIX EVERYTHING** - Address EVERY issue, no matter how "minor"
-3. **VERIFY** - Re-run all checks after fixes
-4. **REPEAT** - If new issues found, spawn more agents and fix those too
-5. **NO STOPPING** - Keep working until ALL checks show ✅ GREEN
-6. **NO EXCUSES** - Common invalid excuses:
-    - "It's just formatting" → Auto-format it NOW
-    - "It's a false positive" → Prove it or fix it NOW
-    - "It works fine" → Working isn't enough, fix it NOW
-    - "Other code does this" → Fix that too NOW
-7. **ESCALATE** - Only ask for help if truly blocked after attempting fixes
-</failure-response-protocol>
-
-<final-verification>
-**Final Verification:**
-The code is ready when:
-✓ composer test: PASSES all tests
-✓ composer refactor: NO code quality issues
-✓ All checklist items verified
-✓ Feature works end-to-end in realistic scenarios
-✓ Error paths tested and handle gracefully
-</final-verification>
-
-<final-commitment>
-**Final Commitment:**
-I will now execute EVERY check listed above and FIX ALL ISSUES. I will:
-
-- ✅ Run all checks to identify issues
-- ✅ SPAWN MULTIPLE AGENTS to fix issues in parallel
-- ✅ Keep working until EVERYTHING passes
-- ✅ Not stop until all checks show passing status
-
-I will NOT:
-
-- ❌ Just report issues without fixing them
-- ❌ Skip any checks
-- ❌ Rationalize away issues
-- ❌ Declare "good enough"
-- ❌ Stop at "mostly passing"
-- ❌ Stop working while ANY issues remain
-</final-commitment>
-
-<remember>
-**REMEMBER: This is a FIXING task, not a reporting task!**
-
-The code is ready ONLY when every single check shows ✅ GREEN.
-</remember>
-
-<execute>
-**Executing comprehensive validation and FIXING ALL ISSUES NOW...**
-</execute>
+**Remember**: This is a FIXING task, not a reporting task!
+</completion>

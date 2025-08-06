@@ -1,0 +1,125 @@
+{
+  "pre_commit": {
+    "required": [
+      {
+        "check": "PHPStan/Larastan",
+        "command": "composer test:types",
+        "success_criteria": "No errors, no warnings",
+        "blocking": true
+      },
+      {
+        "check": "Pint formatting",
+        "command": "composer refactor:lint",
+        "success_criteria": "All files formatted",
+        "blocking": true
+      },
+      {
+        "check": "Rector refactoring",
+        "command": "composer refactor:rector",
+        "success_criteria": "No suggested changes",
+        "blocking": true
+      },
+      {
+        "check": "Pest tests",
+        "command": "composer test:pest",
+        "success_criteria": "All tests passing",
+        "blocking": true
+      }
+    ]
+  },
+  "code_complete_criteria": {
+    "mandatory": [
+      "All linters pass with zero warnings",
+      "All tests pass",
+      "Feature works end-to-end",
+      "Old code is deleted",
+      "No TODOs remain",
+      "Variable names are self-documenting"
+    ],
+    "laravel_specific": [
+      "Eloquent used instead of raw SQL",
+      "Form requests used for validation",
+      "Type hints on all methods",
+      "Enum classes instead of constants",
+      "No database queries in views",
+      "Livewire components properly structured",
+      "Filament resources follow patterns"
+    ]
+  },
+  "performance_checks": [
+    {
+      "issue": "N+1 queries",
+      "detection": "Missing eager loading",
+      "fix": "Add with() or load() methods"
+    },
+    {
+      "issue": "Missing indexes",
+      "detection": "Slow query log",
+      "fix": "Add database indexes"
+    },
+    {
+      "issue": "Large datasets",
+      "detection": "Memory usage spikes",
+      "fix": "Use chunking or lazy collections"
+    },
+    {
+      "issue": "Synchronous heavy operations",
+      "detection": "Request timeout",
+      "fix": "Move to queue jobs"
+    }
+  ],
+  "security_checks": [
+    {
+      "vulnerability": "SQL Injection",
+      "detection": "Raw SQL with concatenation",
+      "severity": "critical"
+    },
+    {
+      "vulnerability": "XSS",
+      "detection": "Unescaped output",
+      "severity": "critical"
+    },
+    {
+      "vulnerability": "Mass Assignment",
+      "detection": "Missing fillable/guarded",
+      "severity": "high"
+    },
+    {
+      "vulnerability": "CSRF",
+      "detection": "Missing CSRF token",
+      "severity": "high"
+    },
+    {
+      "vulnerability": "Hardcoded Secrets",
+      "detection": "Credentials in code",
+      "severity": "critical"
+    }
+  ],
+  "documentation_requirements": {
+    "code_level": [
+      "Complex algorithms explained",
+      "API endpoints documented",
+      "Database schema changes noted"
+    ],
+    "project_level": [
+      "README updated if needed",
+      "CHANGELOG updated for features",
+      ".env.example updated for new variables"
+    ]
+  },
+  "testing_coverage": {
+    "minimum_coverage": {
+      "critical_paths": 100,
+      "business_logic": 80,
+      "ui_components": 60,
+      "utilities": 40
+    },
+    "required_tests": [
+      "Authentication flows",
+      "Payment processing",
+      "Data mutations",
+      "API endpoints",
+      "Critical user paths"
+    ]
+  }
+}

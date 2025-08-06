@@ -1,0 +1,110 @@
+{
+  "naming": {
+    "classes": "PascalCase",
+    "methods": "camelCase",
+    "variables": "camelCase",
+    "constants": "UPPER_SNAKE_CASE",
+    "routes": "kebab-case",
+    "config_files": "kebab-case",
+    "config_keys": "snake_case",
+    "database_tables": "plural_snake_case",
+    "database_columns": "snake_case",
+    "artisan_commands": "kebab-case"
+  },
+  "controllers": {
+    "naming": "PluralResourceNameController",
+    "methods": ["index", "create", "store", "show", "edit", "update", "destroy"],
+    "rules": [
+      "Keep controllers thin",
+      "Delegate to services",
+      "Use form requests for validation",
+      "No database queries in controllers"
+    ]
+  },
+  "models": {
+    "location": "app/Models",
+    "rules": [
+      "Define all relationships with return types",
+      "Use casts for attributes",
+      "Implement scopes for queries",
+      "Use observers for events",
+      "Mass assignment protection"
+    ]
+  },
+  "services": {
+    "location": "app/Services",
+    "rules": [
+      "Single responsibility",
+      "Dependency injection",
+      "Clear method names",
+      "Business logic only"
+    ]
+  },
+  "validation": {
+    "approach": "Form Request classes",
+    "rules": [
+      "Use array notation for rules",
+      "Custom rules use snake_case",
+      "Authorize method required",
+      "Clear error messages"
+    ]
+  },
+  "database": {
+    "queries": {
+      "required": "Eloquent or Query Builder",
+      "forbidden": "Raw SQL queries"
+    },
+    "migrations": {
+      "naming": "yyyy_mm_dd_hhmmss_description",
+      "rules": [
+        "Only up() method, no down()",
+        "Use blueprint methods",
+        "Add indexes where needed"
+      ]
+    }
+  },
+  "testing": {
+    "framework": "Pest",
+    "structure": {
+      "unit": "tests/Unit",
+      "feature": "tests/Feature"
+    },
+    "rules": [
+      "Test behavior not implementation",
+      "Use factories and seeders",
+      "Cover edge cases",
+      "Meaningful test names"
+    ]
+  },
+  "livewire": {
+    "rules": [
+      "No database queries in render()",
+      "Use computed properties",
+      "Implement proper validation",
+      "Use actions for interactions"
+    ]
+  },
+  "filament": {
+    "rules": [
+      "Follow standard resource pattern",
+      "Use proper form schemas",
+      "Implement authorization",
+      "Use relationship managers"
+    ]
+  },
+  "security": {
+    "required": [
+      "Input validation on all external data",
+      "CSRF protection on forms",
+      "Mass assignment protection",
+      "Use Laravel's authentication",
+      "Sanitize user input"
+    ],
+    "forbidden": [
+      "Direct $_GET/$_POST access",
+      "Hardcoded secrets",
+      "Unvalidated user input",
+      "SQL concatenation"
+    ]
+  }
+}

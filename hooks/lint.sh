@@ -23,7 +23,7 @@ add_error() {
     CLAUDE_HOOKS_SUMMARY+=("${RED}❌${NC} $message")
 }
 
-# Print summary function
+# Print summary function with agent hints
 print_summary() {
     if [[ $CLAUDE_HOOKS_ERROR_COUNT -gt 0 ]]; then
         echo -e "\n${RED}═══ Issues Found ═══${NC}" >&2
@@ -32,6 +32,12 @@ print_summary() {
         done
         echo -e "\n${RED}Found $CLAUDE_HOOKS_ERROR_COUNT issue(s) that MUST be fixed!${NC}" >&2
         echo -e "${RED}❌ Fix ALL issues above before continuing!${NC}" >&2
+        
+        # Agent recommendation
+        echo -e "\n${YELLOW}🤖 AGENT RECOMMENDATION:${NC}" >&2
+        echo -e "${YELLOW}Spawn fix agents to resolve these issues in parallel:${NC}" >&2
+        echo -e "${YELLOW}Say: \"I'll spawn fix agents to resolve all linting issues\"${NC}" >&2
+        echo -e "${YELLOW}Reference: .claude/agents/fix-agent.md${NC}" >&2
     fi
 }
 

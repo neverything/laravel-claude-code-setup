@@ -1,0 +1,122 @@
+{
+  "php": {
+    "security": [
+      {
+        "pattern": "\\$_(GET|POST|REQUEST|COOKIE|SESSION|SERVER|ENV|FILES)\\[",
+        "message": "Direct superglobal access forbidden. Use Laravel's Request class.",
+        "severity": "critical"
+      },
+      {
+        "pattern": "DB::raw\\(|DB::select\\(|DB::statement\\(",
+        "message": "Raw SQL forbidden. Use Eloquent or Query Builder.",
+        "severity": "critical"
+      },
+      {
+        "pattern": "eval\\(|exec\\(|system\\(|shell_exec\\(",
+        "message": "Code execution functions forbidden.",
+        "severity": "critical"
+      }
+    ],
+    "code_quality": [
+      {
+        "pattern": "//\\s*(TODO|FIXME|HACK):",
+        "message": "TODO comments forbidden in production code.",
+        "severity": "high"
+      },
+      {
+        "pattern": "var_dump\\(|dd\\(|dump\\(|print_r\\(",
+        "message": "Debug statements forbidden in production.",
+        "severity": "high"
+      },
+      {
+        "pattern": "(processV2|handleNew|_old|_backup|_temp)\\(",
+        "message": "Versioned or temporary function names forbidden.",
+        "severity": "medium"
+      },
+      {
+        "pattern": "function\\s+\\w+\\s*\\([^)]*\\)\\s*(?!:)",
+        "message": "Missing return type declaration.",
+        "severity": "medium"
+      }
+    ],
+    "laravel_specific": [
+      {
+        "pattern": "env\\(['\"]",
+        "message": "env() should only be used in config files.",
+        "severity": "medium",
+        "except": ["config/*.php"]
+      },
+      {
+        "pattern": "\\$this->validate\\(",
+        "message": "Use Form Request classes for validation.",
+        "severity": "low",
+        "except": ["Livewire components"]
+      }
+    ]
+  },
+  "blade": {
+    "security": [
+      {
+        "pattern": "\\{\\{\\{.*\\}\\}\\}|\\{!!.*!!\\}",
+        "message": "Unescaped output can cause XSS. Use {{ }} instead.",
+        "severity": "critical"
+      }
+    ],
+    "quality": [
+      {
+        "pattern": "<style>|<script>",
+        "message": "Inline styles/scripts forbidden. Use external files.",
+        "severity": "medium"
+      },
+      {
+        "pattern": "@php",
+        "message": "PHP blocks in Blade discouraged. Use controllers/components.",
+        "severity": "low"
+      }
+    ]
+  },
+  "javascript": {
+    "quality": [
+      {
+        "pattern": "console\\.(log|debug|info)",
+        "message": "Console statements should be removed.",
+        "severity": "low"
+      },
+      {
+        "pattern": "debugger;",
+        "message": "Debugger statements forbidden.",
+        "severity": "high"
+      }
+    ]
+  },
+  "livewire": {
+    "performance": [
+      {
+        "pattern": "render\\(\\)[^}]*\\$this->\\w+->get\\(\\)|render\\(\\)[^}]*::all\\(\\)",
+        "message": "Database queries in render() method forbidden.",
+        "severity": "critical"
+      },
+      {
+        "pattern": "wire:poll",
+        "message": "Polling forbidden. Use Laravel Echo for real-time updates.",
+        "severity": "high"
+      }
+    ]
+  },
+  "general": {
+    "migration_functions": [
+      {
+        "pattern": "function\\s+(up|down)_v\\d+",
+        "message": "Versioned migration functions forbidden.",
+        "severity": "high"
+      }
+    ],
+    "compatibility_layers": [
+      {
+        "pattern": "(legacy|deprecated|obsolete|old)_",
+        "message": "Compatibility layers forbidden on feature branches.",
+        "severity": "medium"
+      }
+    ]
+  }
+}

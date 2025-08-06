@@ -23,7 +23,7 @@ add_error() {
     CLAUDE_HOOKS_SUMMARY+=("${RED}❌${NC} $message")
 }
 
-# Print summary function
+# Print summary function with agent hints
 print_summary() {
     if [[ $CLAUDE_HOOKS_ERROR_COUNT -gt 0 ]]; then
         echo -e "\n${RED}═══ Issues Found ═══${NC}" >&2
@@ -32,6 +32,20 @@ print_summary() {
         done
         echo -e "\n${RED}Found $CLAUDE_HOOKS_ERROR_COUNT issue(s) that MUST be fixed!${NC}" >&2
         echo -e "${RED}❌ Fix ALL issues above before continuing!${NC}" >&2
+        
+        # Agent recommendation based on error type
+        echo -e "\n${YELLOW}🤖 AGENT RECOMMENDATION:${NC}" >&2
+        
+        # Check if it's missing tests or failing tests
+        if echo "${CLAUDE_HOOKS_SUMMARY[@]}" | grep -q "Missing required test"; then
+            echo -e "${YELLOW}Spawn a test agent to write comprehensive tests:${NC}" >&2
+            echo -e "${YELLOW}Say: \"I'll spawn a test agent to add the missing tests\"${NC}" >&2
+            echo -e "${YELLOW}Reference: .claude/agents/test-agent.md${NC}" >&2
+        else
+            echo -e "${YELLOW}Spawn fix agents to resolve test failures:${NC}" >&2
+            echo -e "${YELLOW}Say: \"I'll spawn fix agents to resolve the failing tests\"${NC}" >&2
+            echo -e "${YELLOW}Reference: .claude/agents/fix-agent.md${NC}" >&2
+        fi
     fi
 }
 
